@@ -12,6 +12,7 @@ import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -30,6 +31,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     private static final int PASSWORD_MAX_LENGTH = 2048;
 
     public static final String SUFFIX_SALT = "suARnTClqnWOx8";
+    private static final String USER_LOGIN_INFO = "user_login_info";
 
     public RegisterUserRsp userRegister(@NonNull String userName, @NonNull String userPassword, @NonNull String repeatPassword) {
         RegisterUserRsp rspResult = new RegisterUserRsp("");
@@ -73,7 +75,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         return new RegisterUserRsp(newUser.getId().toString());
     }
 
-    public LoginUserRsp userLogin(@NonNull String userName, @NonNull String userPassword) {
+    public LoginUserRsp userLogin(@NonNull String userName, @NonNull String userPassword, HttpServletRequest request) {
         LoginUserRsp rspResult = new LoginUserRsp(null, "");
         if (StringUtils.isAnyBlank(userName, userPassword)) {
             rspResult.setMsg("用户名或密码不能为空");
@@ -116,6 +118,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             safeUser.setEmail(savedUser.getEmail());
             safeUser.setAvatarUrl(savedUser.getAvatarUrl());
             rspResult.setUser(safeUser);
+            request.getSession().setAttribute(USER_LOGIN_INFO, safeUser);
         } else {
             rspResult.setMsg("密码校验失败");
         }
