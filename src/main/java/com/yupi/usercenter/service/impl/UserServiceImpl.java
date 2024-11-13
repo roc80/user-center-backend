@@ -111,12 +111,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         if (needCheckPasswordMD5.equals(savedUserPasswordMD5)) {
             rspResult.setMsg("登录成功");
             User safeUser = new User(savedUser.getUserName(), "");
-            safeUser.setPhone(savedUser.getPhone());
-            safeUser.setGender(savedUser.getGender());
-            safeUser.setIsValid(savedUser.getIsValid());
-            safeUser.setCreateDatetime(savedUser.getCreateDatetime());
-            safeUser.setEmail(savedUser.getEmail());
+            safeUser.setId(savedUser.getId());
             safeUser.setAvatarUrl(savedUser.getAvatarUrl());
+            safeUser.setGender(savedUser.getGender());
+            safeUser.setPhone(savedUser.getPhone());
+            safeUser.setEmail(savedUser.getEmail());
+            safeUser.setCreateDatetime(savedUser.getCreateDatetime());
+            safeUser.setIsValid(savedUser.getIsValid());
             rspResult.setUser(safeUser);
             request.getSession().setAttribute(USER_LOGIN_INFO, safeUser);
         } else {

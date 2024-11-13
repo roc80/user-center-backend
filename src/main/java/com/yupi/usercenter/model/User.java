@@ -19,8 +19,6 @@ public class User implements Serializable {
     public User(@NotNull String userName, @NotNull String userPassword) {
         this.userName = userName;
         this.userPassword = userPassword;
-        this.createDatetime = new Date();
-        this.updateDatetime = this.createDatetime;
         this.isValid = 0;
         this.isDelete = 0;
     }
@@ -66,13 +64,11 @@ public class User implements Serializable {
     /**
      * 记录创建时间
      */
-    @NonNull
     private Date createDatetime;
 
     /**
      * 记录更新时间
      */
-    @NonNull
     private Date updateDatetime;
 
     /**
