@@ -1,14 +1,14 @@
 package com.yupi.usercenter.controller;
 
+import com.yupi.usercenter.model.UserDeleteRequest;
 import com.yupi.usercenter.model.UserLoginRequest;
 import com.yupi.usercenter.model.UserRegisterRequest;
+import com.yupi.usercenter.model.response.CommonResponse;
 import com.yupi.usercenter.model.response.LoginUserRsp;
 import com.yupi.usercenter.model.response.RegisterUserRsp;
 import com.yupi.usercenter.service.UserService;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
@@ -34,4 +34,22 @@ public class UserController {
         }
         return userService.userLogin(userLoginRequest.getUserName(), userLoginRequest.getUserPassword(), request);
     }
+
+    @GetMapping("/search")
+    public CommonResponse searchUser(String userName, HttpServletRequest request) {
+        if (StringUtils.isBlank(userName)) {
+            return new CommonResponse(-1, "用户名不能为空", null);
+        }
+        return userService.searchUser(userName, request);
+    }
+
+    @PostMapping("/delete")
+    public CommonResponse deleteUser(@RequestBody UserDeleteRequest userDeleteRequest, HttpServletRequest request) {
+        long userId = userDeleteRequest.getUserId();
+        if (userId <= 0) {
+            return new CommonResponse(-1, "userId不合法", null);
+        }
+        return userService.deleteUser(userId, request);
+    }
+
 }

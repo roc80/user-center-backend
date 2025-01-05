@@ -2,6 +2,7 @@ package com.yupi.usercenter.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.yupi.usercenter.model.User;
+import com.yupi.usercenter.model.response.CommonResponse;
 import com.yupi.usercenter.model.response.LoginUserRsp;
 import com.yupi.usercenter.model.response.RegisterUserRsp;
 import org.springframework.lang.NonNull;
@@ -19,4 +20,7 @@ public interface UserService extends IService<User> {
 
     LoginUserRsp userLogin(@NonNull String userName, @NonNull String userPassword, HttpServletRequest request);
 
+    CommonResponse searchUser(@NonNull String userName, HttpServletRequest request);
+
+    CommonResponse deleteUser(@NonNull Long userId, HttpServletRequest request);
 }

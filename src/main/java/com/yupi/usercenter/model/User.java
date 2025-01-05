@@ -19,8 +19,6 @@ public class User implements Serializable {
     public User(@NotNull String userName, @NotNull String userPassword) {
         this.userName = userName;
         this.userPassword = userPassword;
-        this.isValid = 0;
-        this.isDelete = 0;
     }
 
     /**
@@ -83,6 +81,11 @@ public class User implements Serializable {
     @NonNull
     @TableLogic
     private Integer isDelete;
+
+    /**
+     * 用户角色 0-普通用户 1-管理员
+     */
+    private Integer userRole;
 
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;
