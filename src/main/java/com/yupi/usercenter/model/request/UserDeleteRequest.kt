@@ -1,4 +1,4 @@
-package com.yupi.usercenter.model
+package com.yupi.usercenter.model.request
 
 import com.fasterxml.jackson.annotation.JsonProperty
 

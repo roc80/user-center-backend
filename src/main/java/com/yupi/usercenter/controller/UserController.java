@@ -1,8 +1,8 @@
 package com.yupi.usercenter.controller;
 
-import com.yupi.usercenter.model.UserDeleteRequest;
-import com.yupi.usercenter.model.UserLoginRequest;
-import com.yupi.usercenter.model.UserRegisterRequest;
+import com.yupi.usercenter.model.request.UserDeleteRequest;
+import com.yupi.usercenter.model.request.UserLoginRequest;
+import com.yupi.usercenter.model.request.UserRegisterRequest;
 import com.yupi.usercenter.model.response.CommonResponse;
 import com.yupi.usercenter.model.response.LoginUserRsp;
 import com.yupi.usercenter.model.response.RegisterUserRsp;
