@@ -11,6 +11,7 @@ CREATE TABLE `user` (
                         `update_datetime` timestamp NULL COMMENT '记录更新时间',
                         `is_valid` tinyint NOT NULL COMMENT '数据是否有效，0有效，1失效',
                         `is_delete` tinyint NOT NULL COMMENT '数据是否逻辑删除，0未删除，1已删除',
+                        `user_role` int NOT NULL COMMENT '用户角色 0-普通用户 1-管理员',
                         PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 

@@ -1,5 +1,6 @@
 package com.yupi.usercenter.controller;
 
+import com.yupi.usercenter.model.User;
 import com.yupi.usercenter.model.request.UserDeleteRequest;
 import com.yupi.usercenter.model.request.UserLoginRequest;
 import com.yupi.usercenter.model.request.UserRegisterRequest;
@@ -34,6 +35,12 @@ public class UserController {
         }
         return userService.userLogin(userLoginRequest.getUserName(), userLoginRequest.getUserPassword(), request);
     }
+
+    @GetMapping("/current")
+    public User currentUser(HttpServletRequest request) {
+        return userService.currentUser(request);
+    }
+
 
     @GetMapping("/search")
     public CommonResponse searchUser(String userName, HttpServletRequest request) {

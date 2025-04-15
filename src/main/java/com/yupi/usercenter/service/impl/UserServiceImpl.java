@@ -12,6 +12,7 @@ import com.yupi.usercenter.service.UserService;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
@@ -39,7 +40,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     private static final String USER_LOGIN_INFO = "user_login_info";
 
     public RegisterUserRsp userRegister(@NonNull String userName, @NonNull String userPassword, @NonNull String repeatPassword) {
-        RegisterUserRsp rspResult = new RegisterUserRsp("");
+        RegisterUserRsp rspResult = new RegisterUserRsp();
         if (StringUtils.isAnyBlank(userName, userPassword, repeatPassword)) {
             rspResult.setMsg("用户名或密码不能为空");
             return rspResult;
@@ -77,7 +78,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         String userPasswordMd5 = DigestUtils.md5DigestAsHex((userPassword + SUFFIX_SALT).getBytes());
         User newUser = new User(userName, userPasswordMd5);
         this.save(newUser);
-        return new RegisterUserRsp(newUser.getId().toString());
+        return new RegisterUserRsp(newUser.getId(), "注册成功");
     }
 
     public LoginUserRsp userLogin(@NonNull String userName, @NonNull String userPassword, HttpServletRequest request) {
@@ -142,6 +143,19 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         }
         boolean result = this.removeById(userId);
         return new CommonResponse(result ? 0 : -1, result ? "删除成功" : "删除失败", result);
+    }
+
+    @Override
+    public @Nullable User currentUser(HttpServletRequest request) {
+        Object userLoginInfo = request.getSession().getAttribute(USER_LOGIN_INFO);
+        if (!(userLoginInfo instanceof User)) {
+            return null;
+        }
+        User user = this.getById(((User)(userLoginInfo)).getId());
+        if (user == null) {
+            return null;
+        }
+        return getSafeUser(user);
     }
 
     private boolean isAdmin(HttpServletRequest request) {

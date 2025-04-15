@@ -19,6 +19,9 @@ public class User implements Serializable {
     public User(@NotNull String userName, @NotNull String userPassword) {
         this.userName = userName;
         this.userPassword = userPassword;
+        isValid = 0;
+        isDelete = 0;
+        userRole = 0;
     }
 
     /**
@@ -85,6 +88,7 @@ public class User implements Serializable {
     /**
      * 用户角色 0-普通用户 1-管理员
      */
+    @NonNull
     private Integer userRole;
 
     @TableField(exist = false)

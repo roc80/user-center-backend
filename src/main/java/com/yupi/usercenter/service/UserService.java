@@ -23,4 +23,6 @@ public interface UserService extends IService<User> {
     CommonResponse searchUser(@NonNull String userName, HttpServletRequest request);
 
     CommonResponse deleteUser(@NonNull Long userId, HttpServletRequest request);
+
+    User currentUser(HttpServletRequest request);
 }
