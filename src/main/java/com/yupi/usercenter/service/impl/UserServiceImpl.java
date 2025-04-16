@@ -155,7 +155,19 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         if (user == null) {
             return null;
         }
+        request.getSession().setAttribute(USER_LOGIN_INFO, user);
         return getSafeUser(user);
+    }
+
+    @Override
+    public CommonResponse searchAllUser(HttpServletRequest request) {
+        if (!isAdmin(request)) {
+            return new CommonResponse(-1, "无权限查询用户", null);
+        }
+        QueryWrapper<User> userQueryWrapper = new QueryWrapper<>();
+        List<User> originalUserList = this.list(userQueryWrapper);
+        List<User> safetyUserList = originalUserList.stream().map(this::getSafeUser).collect(Collectors.toList());
+        return new CommonResponse(0, "查询成功", safetyUserList);
     }
 
     private boolean isAdmin(HttpServletRequest request) {

@@ -50,6 +50,11 @@ public class UserController {
         return userService.searchUser(userName, request);
     }
 
+    @GetMapping("/search/all")
+    public CommonResponse searchAllUser(HttpServletRequest request) {
+        return userService.searchAllUser(request);
+    }
+
     @PostMapping("/delete")
     public CommonResponse deleteUser(@RequestBody UserDeleteRequest userDeleteRequest, HttpServletRequest request) {
         long userId = userDeleteRequest.getUserId();

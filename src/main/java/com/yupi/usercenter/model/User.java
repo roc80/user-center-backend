@@ -19,6 +19,7 @@ public class User implements Serializable {
     public User(@NotNull String userName, @NotNull String userPassword) {
         this.userName = userName;
         this.userPassword = userPassword;
+        createDatetime = new Date();
         isValid = 0;
         isDelete = 0;
         userRole = 0;
