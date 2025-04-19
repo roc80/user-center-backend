@@ -36,6 +36,11 @@ public class UserController {
         return userService.userLogin(userLoginRequest.getUserName(), userLoginRequest.getUserPassword(), request);
     }
 
+    @PostMapping("/logout")
+    public CommonResponse userLogout(HttpServletRequest request) {
+        return userService.userLogout(request);
+    }
+
     @GetMapping("/current")
     public User currentUser(HttpServletRequest request) {
         return userService.currentUser(request);

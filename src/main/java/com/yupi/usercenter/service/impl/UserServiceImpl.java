@@ -126,6 +126,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
     @Override
+    public CommonResponse userLogout(HttpServletRequest request) {
+        request.getSession().removeAttribute(USER_LOGIN_INFO);
+        return new CommonResponse(0, "注销成功", null);
+    }
+
+    @Override
     public CommonResponse searchUser(@NotNull String userName, HttpServletRequest request) {
         if (!isAdmin(request)) {
             return new CommonResponse(-1, "无权限查询用户", null);

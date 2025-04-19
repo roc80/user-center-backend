@@ -27,4 +27,6 @@ public interface UserService extends IService<User> {
     User currentUser(HttpServletRequest request);
 
     CommonResponse searchAllUser(HttpServletRequest request);
+
+    CommonResponse userLogout(HttpServletRequest request);
 }
