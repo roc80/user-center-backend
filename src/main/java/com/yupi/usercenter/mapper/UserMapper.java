@@ -4,10 +4,9 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.yupi.usercenter.model.User;
 
 /**
+ * 针对表【user(用户表)】的数据库操作Mapper
 * @author lipeng
-* @description 针对表【user(用户表)】的数据库操作Mapper
-* @createDate 2024-10-21 18:42:42
-* @Entity com.yupi.usercenter.model.User
+* @since 2024-10-21 18:42:42
 */
 public interface UserMapper extends BaseMapper<User> {
 

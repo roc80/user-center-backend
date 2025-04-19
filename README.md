@@ -15,3 +15,4 @@
 | create_datetime | timestamp     |                        |
 | update_datetime | timestamp     |                        |
 | is_delete       | tinyint       | 逻辑上删除 0 - 未删除， 1 - 已删除 |
+| user_role       | int           | 用户角色 0-普通用户 1-管理员      |

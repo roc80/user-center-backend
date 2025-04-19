@@ -5,9 +5,9 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.yupi.usercenter.constant.UserConstant;
 import com.yupi.usercenter.mapper.UserMapper;
 import com.yupi.usercenter.model.User;
-import com.yupi.usercenter.model.response.CommonResponse;
-import com.yupi.usercenter.model.response.LoginUserRsp;
-import com.yupi.usercenter.model.response.RegisterUserRsp;
+import com.yupi.usercenter.model.base.BaseResponse;
+import com.yupi.usercenter.model.base.Error;
+import com.yupi.usercenter.model.base.ResponseUtils;
 import com.yupi.usercenter.service.UserService;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
@@ -23,9 +23,10 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
+ * 针对表【user(用户表)】的数据库操作Service实现
+ *
  * @author lipeng
- * {@code @description} 针对表【user(用户表)】的数据库操作Service实现
- * {@code @createDate} 2024-10-21 18:42:42
+ * @since 2024-10-21 18:42:42
  */
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, User>
@@ -36,155 +37,143 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     private static final int PASSWORD_MIN_LENGTH = 8;
     private static final int PASSWORD_MAX_LENGTH = 2048;
 
+    // TODO@lp 不能硬编码在类中
     public static final String SUFFIX_SALT = "suARnTClqnWOx8";
     private static final String USER_LOGIN_INFO = "user_login_info";
 
-    public RegisterUserRsp userRegister(@NonNull String userName, @NonNull String userPassword, @NonNull String repeatPassword) {
-        RegisterUserRsp rspResult = new RegisterUserRsp();
+    public BaseResponse<Long> userRegister(@NonNull String userName, @NonNull String userPassword, @NonNull String repeatPassword) {
         if (StringUtils.isAnyBlank(userName, userPassword, repeatPassword)) {
-            rspResult.setMsg("用户名或密码不能为空");
-            return rspResult;
+            return ResponseUtils.error(Error.CLIENT_PARAMS_ERROR, "用户名或密码不能为空");
         }
-        // 用户名长度校验
-        if (userName.length() < USERNAME_MIN_LENGTH || userName.length() > USERNAME_MAX_LENGTH) {
-            rspResult.setMsg("用户名长度异常");
-            return rspResult;
-        }
-        // 用户名特殊字符校验
-        String regex = "[!@#$%^&*()_+\\-={}\\[\\]:\";',.?/\\\\|]"; /*随便搜的regex */
-        Matcher matcher = Pattern.compile(regex).matcher(userName);
-        if (matcher.find()) {
-            rspResult.setMsg("用户名不能包含特殊字符");
-            return rspResult;
-        }
-        // 密码长度校验
-        if (userPassword.length() < PASSWORD_MIN_LENGTH || userPassword.length() > PASSWORD_MAX_LENGTH) {
-            rspResult.setMsg("密码长度异常");
-            return rspResult;
+        String result = commonCheck(userName, userPassword);
+        if (result != null) {
+            return ResponseUtils.error(Error.CLIENT_PARAMS_ERROR, result);
         }
         // 密码确认校验
         if (!userPassword.equals(repeatPassword)) {
-            rspResult.setMsg("两次输入的密码不一致");
-            return rspResult;
+            return ResponseUtils.error(Error.CLIENT_PARAMS_ERROR, "两次输入的密码不一致");
         }
         // userName 唯一
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         long count = this.count(queryWrapper.eq("user_name", userName));
         if (count > 0) {
-            rspResult.setMsg("该用户名已存在");
-            return rspResult;
+            return ResponseUtils.error(Error.CLIENT_PARAMS_ERROR, "该用户名已存在");
         }
         // 插入一个新用户，返回用户id
         String userPasswordMd5 = DigestUtils.md5DigestAsHex((userPassword + SUFFIX_SALT).getBytes());
         User newUser = new User(userName, userPasswordMd5);
         this.save(newUser);
-        return new RegisterUserRsp(newUser.getId(), "注册成功");
+        return ResponseUtils.success(newUser.getId());
     }
 
-    public LoginUserRsp userLogin(@NonNull String userName, @NonNull String userPassword, HttpServletRequest request) {
-        LoginUserRsp rspResult = new LoginUserRsp(null, "");
-        if (StringUtils.isAnyBlank(userName, userPassword)) {
-            rspResult.setMsg("用户名或密码不能为空");
-            return rspResult;
-        }
+    private String commonCheck(String userName, String userPassword) {
         // 用户名长度校验
         if (userName.length() < USERNAME_MIN_LENGTH || userName.length() > USERNAME_MAX_LENGTH) {
-            rspResult.setMsg("用户名长度异常");
-            return rspResult;
+            return "用户名长度异常";
         }
         // 用户名特殊字符校验
         String regex = "[!@#$%^&*()_+\\-={}\\[\\]:\";',.?/\\\\|]"; /*随便搜的regex */
         Matcher matcher = Pattern.compile(regex).matcher(userName);
         if (matcher.find()) {
-            rspResult.setMsg("用户名不能包含特殊字符");
-            return rspResult;
+            return "用户名不能包含特殊字符";
         }
         // 密码长度校验
         if (userPassword.length() < PASSWORD_MIN_LENGTH || userPassword.length() > PASSWORD_MAX_LENGTH) {
-            rspResult.setMsg("密码长度异常");
-            return rspResult;
+            return "密码长度异常";
         }
-        // 密码校验
-        String needCheckPasswordMD5 = DigestUtils.md5DigestAsHex((userPassword + SUFFIX_SALT).getBytes());
+        return null;
+    }
+
+    public BaseResponse<User> userLogin(@NonNull String userName, @NonNull String userPassword, HttpServletRequest request) {
+        if (StringUtils.isAnyBlank(userName, userPassword)) {
+            return ResponseUtils.error(Error.CLIENT_PARAMS_ERROR, "用户名或密码不能为空");
+        }
+        String reason = commonCheck(userName, userPassword);
+        if (reason != null) {
+            return ResponseUtils.error(Error.CLIENT_PARAMS_ERROR, reason);
+        }
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("user_name", userName);
         User savedUser = this.getOne(queryWrapper);
         if (savedUser == null) {
-            rspResult.setMsg("该用户不存在");
-            return rspResult;
+            return ResponseUtils.error(Error.CLIENT_PARAMS_ERROR, "该用户不存在");
         }
+        // 密码校验
         String savedUserPasswordMD5 = savedUser.getUserPassword();
+        String needCheckPasswordMD5 = DigestUtils.md5DigestAsHex((userPassword + SUFFIX_SALT).getBytes());
         if (needCheckPasswordMD5.equals(savedUserPasswordMD5)) {
-            rspResult.setMsg("登录成功");
             User safeUser = getSafeUser(savedUser);
-            rspResult.setUser(safeUser);
             request.getSession().setAttribute(USER_LOGIN_INFO, safeUser);
+            return ResponseUtils.success(safeUser);
         } else {
-            rspResult.setMsg("密码校验失败");
+            return ResponseUtils.error(Error.CLIENT_PARAMS_ERROR, "密码校验失败");
         }
-        return rspResult;
     }
 
     @Override
-    public CommonResponse userLogout(HttpServletRequest request) {
+    public BaseResponse<Boolean> userLogout(HttpServletRequest request) {
         request.getSession().removeAttribute(USER_LOGIN_INFO);
-        return new CommonResponse(0, "注销成功", null);
+        return ResponseUtils.success(true);
     }
 
     @Override
-    public CommonResponse searchUser(@NotNull String userName, HttpServletRequest request) {
-        if (!isAdmin(request)) {
-            return new CommonResponse(-1, "无权限查询用户", null);
+    public BaseResponse<List<User>> searchUser(@NotNull String userName, HttpServletRequest request) {
+        if (isAdmin(request)) {
+            return ResponseUtils.error(Error.CLIENT_FORBIDDEN, "非管理员，无权限查询用户");
         }
         QueryWrapper<User> userQueryWrapper = new QueryWrapper<User>().like("user_name", userName);
         List<User> originalUserList = this.list(userQueryWrapper);
         List<User> safetyUserList = originalUserList.stream().map(this::getSafeUser).collect(Collectors.toList());
-        return new CommonResponse(0, "查询成功", safetyUserList);
+        return ResponseUtils.success(safetyUserList);
     }
 
     @Override
-    public CommonResponse deleteUser(@NotNull Long userId, HttpServletRequest request) {
-        if (!isAdmin(request)) {
-            return new CommonResponse(-1, "无权限删除用户", null);
+    public BaseResponse<Boolean> deleteUser(@NotNull Long userId, HttpServletRequest request) {
+        if (isAdmin(request)) {
+            return ResponseUtils.error(Error.CLIENT_FORBIDDEN, "无权限删除用户");
         }
-        boolean result = this.removeById(userId);
-        return new CommonResponse(result ? 0 : -1, result ? "删除成功" : "删除失败", result);
+        boolean deleted = this.removeById(userId);
+        if (deleted) {
+            return ResponseUtils.success(true);
+        } else {
+            return ResponseUtils.error(Error.CLIENT_PARAMS_ERROR, "删除失败");
+        }
     }
 
     @Override
-    public @Nullable User currentUser(HttpServletRequest request) {
+    public @Nullable BaseResponse<User> currentUser(HttpServletRequest request) {
         Object userLoginInfo = request.getSession().getAttribute(USER_LOGIN_INFO);
         if (!(userLoginInfo instanceof User)) {
-            return null;
+            return ResponseUtils.error(Error.CLIENT_PARAMS_ERROR, "session中存储的用户信息异常");
         }
-        User user = this.getById(((User)(userLoginInfo)).getId());
+        User user = this.getById(((User) (userLoginInfo)).getId());
         if (user == null) {
-            return null;
+            return ResponseUtils.error(Error.CLIENT_PARAMS_ERROR, "该用户不存在");
         }
         request.getSession().setAttribute(USER_LOGIN_INFO, user);
-        return getSafeUser(user);
+        return ResponseUtils.success(getSafeUser(user));
     }
 
     @Override
-    public CommonResponse searchAllUser(HttpServletRequest request) {
-        if (!isAdmin(request)) {
-            return new CommonResponse(-1, "无权限查询用户", null);
+    public BaseResponse<List<User>> searchAllUser(HttpServletRequest request) {
+        if (isAdmin(request)) {
+            return ResponseUtils.error(Error.CLIENT_FORBIDDEN, "无权限查询用户");
         }
         QueryWrapper<User> userQueryWrapper = new QueryWrapper<>();
         List<User> originalUserList = this.list(userQueryWrapper);
         List<User> safetyUserList = originalUserList.stream().map(this::getSafeUser).collect(Collectors.toList());
-        return new CommonResponse(0, "查询成功", safetyUserList);
+        return ResponseUtils.success(safetyUserList);
     }
 
     private boolean isAdmin(HttpServletRequest request) {
         if (request == null || request.getSession() == null) {
-            return false;
+            return true;
         }
         Object userLoginInfo = request.getSession().getAttribute(USER_LOGIN_INFO);
         if (!(userLoginInfo instanceof User)) {
-            return false;
+            return true;
         }
-        return ((User) userLoginInfo).getUserRole() == UserConstant.USER_ROLE_ADMIN;
+        return ((User) userLoginInfo).getUserRole() != UserConstant.USER_ROLE_ADMIN;
     }
 
     /**
