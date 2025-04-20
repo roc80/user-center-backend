@@ -1,5 +1,7 @@
 package com.yupi.usercenter.model.base
 
+import java.time.LocalDateTime
+
 /**
  * 避免多次new BaseResponse
  * @author lipeng
@@ -30,5 +32,10 @@ object ResponseUtils {
     @JvmStatic
     fun <T> error(error: Error, data: T?): BaseResponse<T> {
         return BaseResponse(error, data, "")
+    }
+
+    @JvmStatic
+    fun <T> error(code: Int, message: String, description: String, dateTime: LocalDateTime) : BaseResponse<T> {
+        return BaseResponse(code, message, description, dateTime)
     }
 }

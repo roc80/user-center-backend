@@ -1,5 +1,7 @@
 package com.yupi.usercenter.model.base
 
+import java.time.LocalDateTime
+
 /**
  * 将同类的Error归为一个枚举值，并附上简要信息
  * @author lipeng
@@ -10,7 +12,8 @@ enum class Error(
          * 对HTTP状态码的业务扩展
         */
         val code: Int,
-        val message: String
+        val message: String,
+        val dateTime: LocalDateTime = LocalDateTime.now(),
 ) {
     OK(20000, "成功"),
 

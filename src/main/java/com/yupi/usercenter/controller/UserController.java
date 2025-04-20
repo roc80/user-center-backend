@@ -1,9 +1,9 @@
 package com.yupi.usercenter.controller;
 
+import com.yupi.usercenter.exception.BusinessException;
 import com.yupi.usercenter.model.User;
 import com.yupi.usercenter.model.base.BaseResponse;
 import com.yupi.usercenter.model.base.Error;
-import com.yupi.usercenter.model.base.ResponseUtils;
 import com.yupi.usercenter.model.request.UserDeleteRequest;
 import com.yupi.usercenter.model.request.UserLoginRequest;
 import com.yupi.usercenter.model.request.UserRegisterRequest;
@@ -24,7 +24,7 @@ public class UserController {
     @PostMapping("/register")
     public BaseResponse<Long> userRegister(@RequestBody UserRegisterRequest userRegisterRequest) {
         if (userRegisterRequest == null) {
-            return ResponseUtils.error(Error.CLIENT_PARAMS_ERROR, "请求体为空");
+            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "请求体为空");
         }
         return userService.userRegister(userRegisterRequest.getUserName(), userRegisterRequest.getUserPassword(), userRegisterRequest.getRepeatPassword());
     }
@@ -32,7 +32,7 @@ public class UserController {
     @PostMapping("/login")
     public BaseResponse<User> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request) {
         if (userLoginRequest == null) {
-            return ResponseUtils.error(Error.CLIENT_PARAMS_ERROR, "请求体为空");
+            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "请求体为空");
         }
         return userService.userLogin(userLoginRequest.getUserName(), userLoginRequest.getUserPassword(), request);
     }
@@ -51,7 +51,7 @@ public class UserController {
     @GetMapping("/search")
     public BaseResponse<List<User>> searchUser(String userName, HttpServletRequest request) {
         if (StringUtils.isBlank(userName)) {
-            return ResponseUtils.error(Error.CLIENT_PARAMS_ERROR, "用户名不能为空");
+            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "用户名为空");
         }
         return userService.searchUser(userName, request);
     }
@@ -65,7 +65,7 @@ public class UserController {
     public BaseResponse<Boolean> deleteUser(@RequestBody UserDeleteRequest userDeleteRequest, HttpServletRequest request) {
         long userId = userDeleteRequest.getUserId();
         if (userId <= 0) {
-            return ResponseUtils.error(Error.CLIENT_PARAMS_ERROR, "userId不合法");
+            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "userId不合法");
         }
         return userService.deleteUser(userId, request);
     }
