@@ -1,5 +1,7 @@
 package com.yupi.usercenter.model.base
 
+import com.yupi.usercenter.model.annotation.Entity
+import com.yupi.usercenter.model.annotation.NoArg
 import java.time.LocalDateTime
 
 /**
@@ -7,6 +9,8 @@ import java.time.LocalDateTime
  * @author lipeng
  * @since 2025/4/19 16:35
  */
+@Entity
+@NoArg
 enum class Error(
         /**
          * 对HTTP状态码的业务扩展

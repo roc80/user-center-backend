@@ -1,7 +1,11 @@
 package com.yupi.usercenter.model.base
 
+import com.yupi.usercenter.model.annotation.Entity
+import com.yupi.usercenter.model.annotation.NoArg
 import java.time.LocalDateTime
 
+@Entity
+@NoArg
 data class BaseResponse<T>(
         /**
          * 响应状态码
