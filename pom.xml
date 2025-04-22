@@ -157,8 +157,8 @@
                 </executions>
                 <configuration>
                     <sourceDirs>
-                        <sourceDir>/src/main/kotlin</sourceDir>
-                        <sourceDir>/src/main/java</sourceDir>
+                        <sourceDir>src/main/kotlin</sourceDir>
+                        <sourceDir>src/main/java</sourceDir>
                     </sourceDirs>
                     <args>
                         <arg>-Xjsr305=strict</arg>
