@@ -4,6 +4,8 @@ logging:
     com.yupi.usercenter: info
 
 spring:
+  profiles:
+    active: prod
   application:
     name: UserCenter
   main:

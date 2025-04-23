@@ -20,7 +20,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RuntimeException.class)
     public BaseResponse handleRuntimeException(RuntimeException e) {
         log.error("RuntimeException: " + e.getMessage(), e);
-        return ResponseUtils.error(Error.SERVER_ERROR, e.getMessage());
+        return ResponseUtils.error(Error.SERVER_ERROR);
     }
 
 }
