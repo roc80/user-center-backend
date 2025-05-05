@@ -92,6 +92,11 @@ public class User implements Serializable {
     @NonNull
     private Integer userRole;
 
+    /**
+     * 标签-JSON列表
+     */
+    private String tagJsonList;
+
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;
 }

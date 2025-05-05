@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/user")
@@ -59,6 +60,14 @@ public class UserController {
     @GetMapping("/search/all")
     public BaseResponse<List<User>> searchAllUser(HttpServletRequest request) {
         return userService.searchAllUser(request);
+    }
+
+    @GetMapping("/search/tags")
+    public BaseResponse<Set<User>> searchUsersByTags(List<String> tagNameList) {
+        if (tagNameList == null || tagNameList.isEmpty()) {
+            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "Tags不能为空");
+        }
+        return userService.searchUsersByTags(tagNameList);
     }
 
     @PostMapping("/delete")

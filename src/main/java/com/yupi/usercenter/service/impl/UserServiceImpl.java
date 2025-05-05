@@ -2,6 +2,8 @@ package com.yupi.usercenter.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.yupi.usercenter.constant.UserConstant;
 import com.yupi.usercenter.exception.BusinessException;
 import com.yupi.usercenter.mapper.UserMapper;
@@ -18,7 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
 import javax.servlet.http.HttpServletRequest;
+import java.lang.reflect.Type;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -190,7 +194,55 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         safeUser.setCreateDatetime(originalUser.getCreateDatetime());
         safeUser.setIsValid(originalUser.getIsValid());
         safeUser.setUserRole(originalUser.getUserRole());
+        safeUser.setTagJsonList(originalUser.getTagJsonList());
         return safeUser;
+    }
+
+    /**
+     * @return 返回的用户包含传入的所有tag
+     * @author lipeng
+     * @since 2025/5/5 16:00
+     */
+    @Override
+    public @NonNull BaseResponse<Set<User>> searchUsersByTags(@Nullable List<String> tagNameList) {
+        if (tagNameList == null || tagNameList.isEmpty()) {
+            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "tags为空");
+        }
+        // 1.在数据库中查
+//        List<User> matchedUserList = searchUsersInDB(tagNameList);
+        // TODO@lp 这两种查询方式哪个好，等以后数据量起来之后，再对比
+        // 2.在内存中查
+        List<User> matchedUserList = searchUsersInMem(tagNameList);
+
+        Set<User> users = matchedUserList.stream().map(this::getSafeUser).collect(Collectors.toSet());
+        return ResponseUtils.success(users);
+    }
+
+    private @NonNull List<User> searchUsersInMem(@NonNull List<String> tagNameList) {
+        List<User> userList = this.list();
+        return userList.stream().filter(user -> {
+            String tagJsonStr = user.getTagJsonList();
+            if (tagJsonStr == null) {
+                return false;
+            }
+            Type type = new TypeToken<Set<String>>() {
+            }.getType();
+            Set<String> userTagNameSet = new Gson().fromJson(tagJsonStr, type);
+            for (String inputTagName : tagNameList) {
+                if (!userTagNameSet.contains(inputTagName)) {
+                    return false;
+                }
+            }
+            return true;
+        }).collect(Collectors.toList());
+    }
+
+    private @NonNull List<User> searchUsersInDB(@NonNull List<String> tagNameList) {
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        for (String tagName : tagNameList) {
+            queryWrapper = queryWrapper.like("tag_json_list", tagName);
+        }
+        return this.list(queryWrapper);
     }
 
 }

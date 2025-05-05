@@ -7,6 +7,7 @@ import org.springframework.lang.NonNull;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 针对表【user(用户表)】的数据库操作Service
@@ -28,4 +29,6 @@ public interface UserService extends IService<User> {
     BaseResponse<List<User>> searchAllUser(HttpServletRequest request);
 
     BaseResponse<Boolean> userLogout(HttpServletRequest request);
+
+    BaseResponse<Set<User>> searchUsersByTags(List<String> tagNameList);
 }
