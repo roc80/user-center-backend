@@ -1,14 +1,13 @@
 logging:
   level:
-    org.springframework: error
-    com.yupi.usercenter: info
+    org.springframework: info
+    com.yupi.usercenter: debug
 
 spring:
+  profiles:
+    active: dev
   application:
     name: UserCenter
-  main:
-    log-startup-info: false
-    banner-mode: off
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/demo
@@ -32,5 +31,7 @@ mybatis-plus:
       logic-not-delete-value: 0 # 逻辑未删除值
 
 knife4j:
-  # 开启增强
+  # 开启增强配置
   enable: true
+  # 标识是否生产环境
+  production: false

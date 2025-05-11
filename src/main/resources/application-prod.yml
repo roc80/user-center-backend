@@ -4,3 +4,6 @@ spring:
     url: ${DB_URL}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
+
+knife4j:
+  production: true

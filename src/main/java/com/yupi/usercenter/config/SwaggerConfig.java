@@ -6,10 +6,9 @@ import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Profile;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfoHandlerMapping;
-import springfox.bean.validators.configuration.BeanValidatorPluginsConfiguration;
 import springfox.documentation.builders.ApiInfoBuilder;
 import springfox.documentation.builders.PathSelectors;
 import springfox.documentation.builders.RequestHandlerSelectors;
@@ -28,7 +27,7 @@ import java.util.stream.Collectors;
 @Configuration
 @EnableKnife4j
 @EnableSwagger2
-@Import(BeanValidatorPluginsConfiguration.class)
+@Profile("dev")
 public class SwaggerConfig {
 
     private static final String SWAGGER_TITLE = "用户中心项目 API 接口文档";
@@ -50,7 +49,7 @@ public class SwaggerConfig {
         return new ApiInfoBuilder()
                 .title(SwaggerConfig.SWAGGER_TITLE)
                 .description("# 用户中心项目API接口文档简介")
-                .contact(new Contact("lipeng", "", "lipeng1080@gmail.com"))
+                .contact(new Contact("lipeng", "https://github.com/roc80", "lipeng1080@gmail.com"))
                 .version(SwaggerConfig.VERSION)
                 .build();
     }
