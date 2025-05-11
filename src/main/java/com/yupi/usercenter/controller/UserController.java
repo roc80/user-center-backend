@@ -63,7 +63,7 @@ public class UserController {
     }
 
     @GetMapping("/search/tags")
-    public BaseResponse<Set<UserDTO>> searchUsersByTags(List<String> tagNameList) {
+    public BaseResponse<Set<UserDTO>> searchUsersByTags(@RequestParam List<String> tagNameList) {
         if (tagNameList == null || tagNameList.isEmpty()) {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "Tags不能为空");
         }
