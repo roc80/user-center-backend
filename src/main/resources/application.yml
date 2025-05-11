@@ -16,6 +16,9 @@ spring:
     password: 123456
   session:
     timeout: 86400
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
 server:
   port: 8080
   servlet:
@@ -27,3 +30,7 @@ mybatis-plus:
       logic-delete-field: isDelete # 全局逻辑删除字段名
       logic-delete-value: 1 # 逻辑已删除值
       logic-not-delete-value: 0 # 逻辑未删除值
+
+knife4j:
+  # 开启增强
+  enable: true
