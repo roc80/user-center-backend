@@ -1,7 +1,7 @@
 package com.yupi.usercenter.controller;
 
 import com.yupi.usercenter.exception.BusinessException;
-import com.yupi.usercenter.model.User;
+import com.yupi.usercenter.model.UserDTO;
 import com.yupi.usercenter.model.base.BaseResponse;
 import com.yupi.usercenter.model.base.Error;
 import com.yupi.usercenter.model.request.UserDeleteRequest;
@@ -31,7 +31,7 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public BaseResponse<User> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request) {
+    public BaseResponse<UserDTO> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request) {
         if (userLoginRequest == null) {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "请求体为空");
         }
@@ -44,13 +44,13 @@ public class UserController {
     }
 
     @GetMapping("/current")
-    public BaseResponse<User> currentUser(HttpServletRequest request) {
+    public BaseResponse<UserDTO> currentUser(HttpServletRequest request) {
         return userService.currentUser(request);
     }
 
 
     @GetMapping("/search")
-    public BaseResponse<List<User>> searchUser(String userName, HttpServletRequest request) {
+    public BaseResponse<List<UserDTO>> searchUser(String userName, HttpServletRequest request) {
         if (StringUtils.isBlank(userName)) {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "用户名为空");
         }
@@ -58,12 +58,12 @@ public class UserController {
     }
 
     @GetMapping("/search/all")
-    public BaseResponse<List<User>> searchAllUser(HttpServletRequest request) {
+    public BaseResponse<List<UserDTO>> searchAllUser(HttpServletRequest request) {
         return userService.searchAllUser(request);
     }
 
     @GetMapping("/search/tags")
-    public BaseResponse<Set<User>> searchUsersByTags(List<String> tagNameList) {
+    public BaseResponse<Set<UserDTO>> searchUsersByTags(List<String> tagNameList) {
         if (tagNameList == null || tagNameList.isEmpty()) {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "Tags不能为空");
         }

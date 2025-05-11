@@ -8,6 +8,7 @@ import com.yupi.usercenter.constant.UserConstant;
 import com.yupi.usercenter.exception.BusinessException;
 import com.yupi.usercenter.mapper.UserMapper;
 import com.yupi.usercenter.model.User;
+import com.yupi.usercenter.model.UserDTO;
 import com.yupi.usercenter.model.base.BaseResponse;
 import com.yupi.usercenter.model.base.Error;
 import com.yupi.usercenter.model.base.ResponseUtils;
@@ -90,7 +91,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         return null;
     }
 
-    public BaseResponse<User> userLogin(@NonNull String userName, @NonNull String userPassword, HttpServletRequest request) {
+    public BaseResponse<UserDTO> userLogin(@NonNull String userName, @NonNull String userPassword, HttpServletRequest request) {
         if (StringUtils.isAnyBlank(userName, userPassword)) {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "用户名或密码不能为空");
         }
@@ -108,9 +109,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         String savedUserPasswordMD5 = savedUser.getUserPassword();
         String needCheckPasswordMD5 = DigestUtils.md5DigestAsHex((userPassword + SUFFIX_SALT).getBytes());
         if (needCheckPasswordMD5.equals(savedUserPasswordMD5)) {
-            User safeUser = getSafeUser(savedUser);
-            request.getSession().setAttribute(USER_LOGIN_INFO, safeUser);
-            return ResponseUtils.success(safeUser);
+            UserDTO userDTO = new UserDTO(savedUser);
+            request.getSession().setAttribute(USER_LOGIN_INFO, userDTO);
+            return ResponseUtils.success(userDTO);
         } else {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "密码校验失败");
         }
@@ -123,13 +124,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
     @Override
-    public BaseResponse<List<User>> searchUser(@NotNull String userName, HttpServletRequest request) {
+    public BaseResponse<List<UserDTO>> searchUser(@NotNull String userName, HttpServletRequest request) {
         if (isAdmin(request)) {
             throw new BusinessException(Error.CLIENT_FORBIDDEN, "非管理员，无权限查询用户");
         }
         QueryWrapper<User> userQueryWrapper = new QueryWrapper<User>().like("user_name", userName);
         List<User> originalUserList = this.list(userQueryWrapper);
-        List<User> safetyUserList = originalUserList.stream().map(this::getSafeUser).collect(Collectors.toList());
+        List<UserDTO> safetyUserList = originalUserList.stream().map(UserDTO::new).collect(Collectors.toList());
         return ResponseUtils.success(safetyUserList);
     }
 
@@ -146,27 +147,28 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
     @Override
-    public @Nullable BaseResponse<User> currentUser(HttpServletRequest request) {
+    public @Nullable BaseResponse<UserDTO> currentUser(HttpServletRequest request) {
         Object userLoginInfo = request.getSession().getAttribute(USER_LOGIN_INFO);
-        if (!(userLoginInfo instanceof User)) {
+        if (!(userLoginInfo instanceof UserDTO)) {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "session中存储的用户信息异常");
         }
-        User user = this.getById(((User) (userLoginInfo)).getId());
-        if (user == null) {
+        User userPO = this.getById(((UserDTO) (userLoginInfo)).getUserId());
+        if (userPO == null) {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "该用户不存在");
         }
-        request.getSession().setAttribute(USER_LOGIN_INFO, user);
-        return ResponseUtils.success(getSafeUser(user));
+        UserDTO userDTO = new UserDTO(userPO);
+        request.getSession().setAttribute(USER_LOGIN_INFO, userDTO);
+        return ResponseUtils.success(userDTO);
     }
 
     @Override
-    public BaseResponse<List<User>> searchAllUser(HttpServletRequest request) {
+    public BaseResponse<List<UserDTO>> searchAllUser(HttpServletRequest request) {
         if (isAdmin(request)) {
             throw new BusinessException(Error.CLIENT_FORBIDDEN, "无权限查询用户");
         }
         QueryWrapper<User> userQueryWrapper = new QueryWrapper<>();
         List<User> originalUserList = this.list(userQueryWrapper);
-        List<User> safetyUserList = originalUserList.stream().map(this::getSafeUser).collect(Collectors.toList());
+        List<UserDTO> safetyUserList = originalUserList.stream().map(UserDTO::new).collect(Collectors.toList());
         return ResponseUtils.success(safetyUserList);
     }
 
@@ -175,28 +177,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             return true;
         }
         Object userLoginInfo = request.getSession().getAttribute(USER_LOGIN_INFO);
-        if (!(userLoginInfo instanceof User)) {
+        if (!(userLoginInfo instanceof UserDTO)) {
             return true;
         }
-        return ((User) userLoginInfo).getUserRole() != UserConstant.USER_ROLE_ADMIN;
+        return UserConstant.USER_ROLE_ADMIN.equals(((UserDTO) userLoginInfo).getUserRole());
     }
 
-    /**
-     * 获取脱敏用户信息
-     */
-    private @NonNull User getSafeUser(@NonNull User originalUser) {
-        User safeUser = new User(originalUser.getUserName(), "");
-        safeUser.setId(originalUser.getId());
-        safeUser.setAvatarUrl(originalUser.getAvatarUrl());
-        safeUser.setGender(originalUser.getGender());
-        safeUser.setPhone(originalUser.getPhone());
-        safeUser.setEmail(originalUser.getEmail());
-        safeUser.setCreateDatetime(originalUser.getCreateDatetime());
-        safeUser.setIsValid(originalUser.getIsValid());
-        safeUser.setUserRole(originalUser.getUserRole());
-        safeUser.setTagJsonList(originalUser.getTagJsonList());
-        return safeUser;
-    }
 
     /**
      * @return 返回的用户包含传入的所有tag
@@ -204,7 +190,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
      * @since 2025/5/5 16:00
      */
     @Override
-    public @NonNull BaseResponse<Set<User>> searchUsersByTags(@Nullable List<String> tagNameList) {
+    public @NonNull BaseResponse<Set<UserDTO>> searchUsersByTags(@Nullable List<String> tagNameList) {
         if (tagNameList == null || tagNameList.isEmpty()) {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "tags为空");
         }
@@ -214,7 +200,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         // 2.在内存中查
         List<User> matchedUserList = searchUsersInMem(tagNameList);
 
-        Set<User> users = matchedUserList.stream().map(this::getSafeUser).collect(Collectors.toSet());
+        Set<UserDTO> users = matchedUserList.stream().map(UserDTO::new).collect(Collectors.toSet());
         return ResponseUtils.success(users);
     }
 

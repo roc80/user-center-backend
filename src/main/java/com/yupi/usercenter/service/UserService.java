@@ -2,6 +2,7 @@ package com.yupi.usercenter.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.yupi.usercenter.model.User;
+import com.yupi.usercenter.model.UserDTO;
 import com.yupi.usercenter.model.base.BaseResponse;
 import org.springframework.lang.NonNull;
 
@@ -18,17 +19,17 @@ public interface UserService extends IService<User> {
 
     BaseResponse<Long> userRegister(@NonNull String userName, @NonNull String userPassword, @NonNull String repeatPassword);
 
-    BaseResponse<User> userLogin(@NonNull String userName, @NonNull String userPassword, HttpServletRequest request);
+    BaseResponse<UserDTO> userLogin(@NonNull String userName, @NonNull String userPassword, HttpServletRequest request);
 
-    BaseResponse<List<User>> searchUser(@NonNull String userName, HttpServletRequest request);
+    BaseResponse<List<UserDTO>> searchUser(@NonNull String userName, HttpServletRequest request);
 
     BaseResponse<Boolean> deleteUser(@NonNull Long userId, HttpServletRequest request);
 
-    BaseResponse<User> currentUser(HttpServletRequest request);
+    BaseResponse<UserDTO> currentUser(HttpServletRequest request);
 
-    BaseResponse<List<User>> searchAllUser(HttpServletRequest request);
+    BaseResponse<List<UserDTO>> searchAllUser(HttpServletRequest request);
 
     BaseResponse<Boolean> userLogout(HttpServletRequest request);
 
-    BaseResponse<Set<User>> searchUsersByTags(List<String> tagNameList);
+    BaseResponse<Set<UserDTO>> searchUsersByTags(List<String> tagNameList);
 }
