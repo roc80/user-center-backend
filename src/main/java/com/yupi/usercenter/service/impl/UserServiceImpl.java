@@ -163,7 +163,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     @Override
     public BaseResponse<List<UserDTO>> searchAllUser(HttpServletRequest request) {
-        if (isAdmin(request)) {
+        if (!isAdmin(request)) {
             throw new BusinessException(Error.CLIENT_FORBIDDEN, "无权限查询用户");
         }
         QueryWrapper<User> userQueryWrapper = new QueryWrapper<>();
