@@ -12,6 +12,7 @@ import com.yupi.usercenter.model.UserDTO;
 import com.yupi.usercenter.model.base.BaseResponse;
 import com.yupi.usercenter.model.base.Error;
 import com.yupi.usercenter.model.base.ResponseUtils;
+import com.yupi.usercenter.model.helper.ModelHelper;
 import com.yupi.usercenter.service.UserService;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
@@ -22,6 +23,7 @@ import org.springframework.util.DigestUtils;
 
 import javax.servlet.http.HttpServletRequest;
 import java.lang.reflect.Type;
+import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -109,7 +111,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         String savedUserPasswordMD5 = savedUser.getUserPassword();
         String needCheckPasswordMD5 = DigestUtils.md5DigestAsHex((userPassword + SUFFIX_SALT).getBytes());
         if (needCheckPasswordMD5.equals(savedUserPasswordMD5)) {
-            UserDTO userDTO = new UserDTO(savedUser);
+            UserDTO userDTO = ModelHelper.INSTANCE.convertUserToUserDto(savedUser);
             request.getSession().setAttribute(USER_LOGIN_INFO, userDTO);
             return ResponseUtils.success(userDTO);
         } else {
@@ -125,18 +127,18 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     @Override
     public BaseResponse<List<UserDTO>> searchUser(@NotNull String userName, HttpServletRequest request) {
-        if (isAdmin(request)) {
+        if (isNotAdmin(request)) {
             throw new BusinessException(Error.CLIENT_FORBIDDEN, "非管理员，无权限查询用户");
         }
         QueryWrapper<User> userQueryWrapper = new QueryWrapper<User>().like("user_name", userName);
         List<User> originalUserList = this.list(userQueryWrapper);
-        List<UserDTO> safetyUserList = originalUserList.stream().map(UserDTO::new).collect(Collectors.toList());
+        List<UserDTO> safetyUserList = originalUserList.stream().map(ModelHelper.INSTANCE::convertUserToUserDto).collect(Collectors.toList());
         return ResponseUtils.success(safetyUserList);
     }
 
     @Override
     public BaseResponse<Boolean> deleteUser(@NotNull Long userId, HttpServletRequest request) {
-        if (isAdmin(request)) {
+        if (isNotAdmin(request)) {
             throw new BusinessException(Error.CLIENT_FORBIDDEN, "无权限删除用户");
         }
         boolean deleted = this.removeById(userId);
@@ -156,31 +158,47 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         if (userPO == null) {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "该用户不存在");
         }
-        UserDTO userDTO = new UserDTO(userPO);
+        UserDTO userDTO = ModelHelper.INSTANCE.convertUserToUserDto(userPO);
         request.getSession().setAttribute(USER_LOGIN_INFO, userDTO);
         return ResponseUtils.success(userDTO);
     }
 
     @Override
     public BaseResponse<List<UserDTO>> searchAllUser(HttpServletRequest request) {
-        if (!isAdmin(request)) {
+        if (isNotAdmin(request)) {
             throw new BusinessException(Error.CLIENT_FORBIDDEN, "无权限查询用户");
         }
         QueryWrapper<User> userQueryWrapper = new QueryWrapper<>();
         List<User> originalUserList = this.list(userQueryWrapper);
-        List<UserDTO> safetyUserList = originalUserList.stream().map(UserDTO::new).collect(Collectors.toList());
+        List<UserDTO> safetyUserList = originalUserList.stream().map(ModelHelper.INSTANCE::convertUserToUserDto).collect(Collectors.toList());
         return ResponseUtils.success(safetyUserList);
     }
 
-    private boolean isAdmin(HttpServletRequest request) {
+    private boolean isNotAdmin(HttpServletRequest request) {
+        UserDTO loginUser = getLoginUser(request);
+        if (loginUser == null) return true;
+        return !UserConstant.USER_ROLE_ADMIN.equals(loginUser.getUserRole());
+    }
+
+    /**
+     * @return null or userDTO(userId > 0)
+     * @author lipeng
+     * @since 2025/5/15 10:45
+    */
+    @org.jetbrains.annotations.Nullable
+    private static UserDTO getLoginUser(HttpServletRequest request) {
         if (request == null || request.getSession() == null) {
-            return true;
+            return null;
         }
         Object userLoginInfo = request.getSession().getAttribute(USER_LOGIN_INFO);
         if (!(userLoginInfo instanceof UserDTO)) {
-            return true;
+            return null;
         }
-        return UserConstant.USER_ROLE_ADMIN.equals(((UserDTO) userLoginInfo).getUserRole());
+        UserDTO loginUser = (UserDTO) userLoginInfo;
+        if (loginUser.getUserId() == null || loginUser.getUserId() <= 0) {
+            return null;
+        }
+        return loginUser;
     }
 
 
@@ -200,8 +218,70 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         // 2.在内存中查
         List<User> matchedUserList = searchUsersInMem(tagNameList);
 
-        Set<UserDTO> users = matchedUserList.stream().map(UserDTO::new).collect(Collectors.toSet());
+        Set<UserDTO> users = matchedUserList.stream().map(ModelHelper.INSTANCE::convertUserToUserDto).collect(Collectors.toSet());
         return ResponseUtils.success(users);
+    }
+
+    @Override
+    public BaseResponse<Integer> updateUser(HttpServletRequest request, @Nullable UserDTO userDTO) {
+        if (userDTO == null || userDTO.getUserId() == null) {
+            throw new BusinessException(Error.CLIENT_PARAMS_NULL, "");
+        }
+        // 校验权限
+        UserDTO loginUser = getLoginUser(request);
+        boolean isSameUser = loginUser != null
+                && userDTO.getUserId().equals(loginUser.getUserId());
+        if (isNotAdmin(request) && !isSameUser) {
+            throw new BusinessException(Error.CLIENT_NO_AUTH, "无权限修改");
+        }
+        User partialUser = ModelHelper.INSTANCE.convertUserDtoToUser(userDTO);
+        User oldUser = this.getById(partialUser.getId());
+        updateUser(oldUser, partialUser);
+        boolean updated = this.updateById(oldUser);
+        if (updated) {
+            return ResponseUtils.success(0);
+        } else {
+            return ResponseUtils.success(-1);
+        }
+    }
+
+    /**
+     * @param partialUser 前端更新用户信息后，传递的新用户对象。只有不为空的部分是需要写入数据库的。
+     * @author lipeng
+     * @since 2025/5/15 11:03
+    */
+    private void updateUser(User originalUser, User partialUser) {
+        if (originalUser == null || partialUser == null) {
+            return;
+        }
+        if (partialUser.getUserName() != null) {
+            originalUser.setUserName(partialUser.getUserName());
+        }
+        if (partialUser.getGender() != null) {
+            originalUser.setGender(partialUser.getGender());
+        }
+        if (partialUser.getEmail() != null) {
+            originalUser.setEmail(partialUser.getEmail());
+        }
+        if (partialUser.getPhone() != null) {
+            originalUser.setPhone(partialUser.getPhone());
+        }
+        if (partialUser.getEmail() != null) {
+            originalUser.setEmail(partialUser.getEmail());
+        }
+        if (partialUser.getEmail() != null) {
+            originalUser.setEmail(partialUser.getEmail());
+        }
+        if (partialUser.getTagJsonList() != null) {
+            originalUser.setTagJsonList(partialUser.getTagJsonList());
+        }
+        if (partialUser.isValid() != null) {
+            originalUser.setValid(partialUser.isValid());
+        }
+        if (partialUser.getUserRole() != null) {
+            originalUser.setUserRole(partialUser.getUserRole());
+        }
+        originalUser.setCreateDatetime(new Date());
     }
 
     private @NonNull List<User> searchUsersInMem(@NonNull List<String> tagNameList) {

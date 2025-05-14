@@ -18,7 +18,14 @@ import java.util.Set;
 
 @RestController
 @RequestMapping("/user")
-@CrossOrigin(origins = {"http://localhost:5173"})
+@CrossOrigin(
+        origins = {"http://localhost:5173"},
+        allowCredentials = "true",
+        allowedHeaders = "*",
+        methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT,
+                RequestMethod.DELETE, RequestMethod.OPTIONS},
+        maxAge = 3600                      // 预检请求的有效期
+)
 public class UserController {
     @Resource
     private UserService userService;
@@ -80,8 +87,11 @@ public class UserController {
         return userService.deleteUser(userId, request);
     }
 
-//    @PostMapping("/update")
-//    public BaseResponse<User> updateUser() {
-//        // todo
-//    }
+    @PostMapping("/update")
+    public BaseResponse<Integer> updateUser(HttpServletRequest request, @RequestBody UserDTO userDTO) {
+        if (userDTO == null) {
+            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "要更新的用户为空");
+        }
+        return userService.updateUser(request, userDTO);
+    }
 }

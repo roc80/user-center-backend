@@ -5,6 +5,7 @@ import com.yupi.usercenter.model.User;
 import com.yupi.usercenter.model.UserDTO;
 import com.yupi.usercenter.model.base.BaseResponse;
 import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -32,4 +33,6 @@ public interface UserService extends IService<User> {
     BaseResponse<Boolean> userLogout(HttpServletRequest request);
 
     BaseResponse<Set<UserDTO>> searchUsersByTags(List<String> tagNameList);
+
+    BaseResponse<Integer> updateUser(HttpServletRequest request, @Nullable UserDTO userDTO);
 }

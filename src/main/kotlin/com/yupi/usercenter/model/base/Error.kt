@@ -25,6 +25,7 @@ enum class Error(
     CLIENT_NO_AUTH(40001, "未登录"),
     CLIENT_FORBIDDEN(40003, "无权限"),
     CLIENT_PATH_ERROR(40004, "请求路径错误"),
+    CLIENT_PARAMS_NULL(40005, "请求参数为空"),
 
     SERVER_ERROR(50000, "服务端错误"),
 }

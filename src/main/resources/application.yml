@@ -43,6 +43,8 @@ server:
         domain: localhost
 
 mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
     db-config:
       logic-delete-field: isDelete # 全局逻辑删除字段名
