@@ -8,6 +8,7 @@ spring:
     active: dev
   application:
     name: UserCenter
+  #数据库
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/demo
@@ -15,13 +16,31 @@ spring:
     password: 123456
   session:
     timeout: 86400
+    store-type: redis
   mvc:
     pathmatch:
       matching-strategy: ant_path_matcher
+  #redis
+  redis:
+    port: 6379
+    host: 127.0.0.1
+    database: 0
+    jedis:
+      pool:
+        #最大连接数
+        max-active: 100
+        #最大等待数
+        max-idle: 8
+        max-wait: 60000
+
+
 server:
   port: 8080
   servlet:
     context-path: /api
+    session:
+      cookie:
+        domain: localhost
 
 mybatis-plus:
   global-config:

@@ -65,6 +65,25 @@
         </dependency>
         <!--mysql end-->
 
+        <!--redis begin-->
+        <!--Spring Session Data Redis 3.0.0 是基于 Spring Boot 3.x 的，要求 Java 17 或更高版本。-->
+
+        <!-- https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-data-redis -->
+        <!--操作redis-->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+            <version>2.6.1</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.springframework.session/spring-session-data-redis -->
+        <!--支持session共享 -->
+        <dependency>
+            <groupId>org.springframework.session</groupId>
+            <artifactId>spring-session-data-redis</artifactId>
+            <version>2.6.1</version>
+        </dependency>
+        <!--redis end-->
+
         <!--others begin-->
         <dependency>
             <groupId>org.projectlombok</groupId>

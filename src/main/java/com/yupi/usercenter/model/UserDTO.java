@@ -4,6 +4,7 @@ import com.yupi.usercenter.constant.UserConstant;
 import lombok.Data;
 import lombok.NonNull;
 
+import java.io.Serializable;
 import java.util.Date;
 
 /**
@@ -12,7 +13,7 @@ import java.util.Date;
  * @since 2025/5/11 7:54
  */
 @Data
-public class UserDTO {
+public class UserDTO implements Serializable {
 
     public UserDTO(@NonNull User userPO) {
         this.userId = userPO.getId();

@@ -18,6 +18,7 @@ import java.util.Set;
 
 @RestController
 @RequestMapping("/user")
+@CrossOrigin(origins = {"http://localhost:5173"})
 public class UserController {
     @Resource
     private UserService userService;
@@ -63,7 +64,7 @@ public class UserController {
     }
 
     @GetMapping("/search/tags")
-    public BaseResponse<Set<UserDTO>> searchUsersByTags(@RequestParam List<String> tagNameList) {
+    public BaseResponse<Set<UserDTO>> searchUsersByTags(@RequestParam(required = false) List<String> tagNameList) {
         if (tagNameList == null || tagNameList.isEmpty()) {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "Tags不能为空");
         }
@@ -79,4 +80,8 @@ public class UserController {
         return userService.deleteUser(userId, request);
     }
 
+//    @PostMapping("/update")
+//    public BaseResponse<User> updateUser() {
+//        // todo
+//    }
 }
