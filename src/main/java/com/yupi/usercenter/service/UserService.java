@@ -22,13 +22,13 @@ public interface UserService extends IService<User> {
 
     BaseResponse<UserDTO> userLogin(@NonNull String userName, @NonNull String userPassword, HttpServletRequest request);
 
-    BaseResponse<List<UserDTO>> searchUser(@NonNull String userName, HttpServletRequest request);
+    BaseResponse<List<UserDTO>> searchUserByUserName(@NonNull String userName, HttpServletRequest request);
 
     BaseResponse<Boolean> deleteUser(@NonNull Long userId, HttpServletRequest request);
 
     BaseResponse<UserDTO> currentUser(HttpServletRequest request);
 
-    BaseResponse<List<UserDTO>> searchAllUser(HttpServletRequest request);
+    BaseResponse<List<UserDTO>> searchAllUser(HttpServletRequest request, int pageNum, int pageSize);
 
     BaseResponse<Boolean> userLogout(HttpServletRequest request);
 

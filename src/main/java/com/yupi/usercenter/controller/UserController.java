@@ -58,16 +58,19 @@ public class UserController {
 
 
     @GetMapping("/search")
-    public BaseResponse<List<UserDTO>> searchUser(String userName, HttpServletRequest request) {
+    public BaseResponse<List<UserDTO>> searchUserByUserName(String userName, HttpServletRequest request) {
         if (StringUtils.isBlank(userName)) {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "用户名为空");
         }
-        return userService.searchUser(userName, request);
+        return userService.searchUserByUserName(userName, request);
     }
 
     @GetMapping("/search/all")
-    public BaseResponse<List<UserDTO>> searchAllUser(HttpServletRequest request) {
-        return userService.searchAllUser(request);
+    public BaseResponse<List<UserDTO>> searchAllUser(HttpServletRequest request, int pageNum, int pageSize) {
+        if (pageNum <= 0 || pageSize <= 0) {
+            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "分页参数错误");
+        }
+        return userService.searchAllUser(request, pageNum, pageSize);
     }
 
     @GetMapping("/search/tags")

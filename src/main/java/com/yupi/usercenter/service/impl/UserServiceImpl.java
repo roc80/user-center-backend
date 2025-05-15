@@ -1,6 +1,7 @@
 package com.yupi.usercenter.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -126,7 +127,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
     @Override
-    public BaseResponse<List<UserDTO>> searchUser(@NotNull String userName, HttpServletRequest request) {
+    public BaseResponse<List<UserDTO>> searchUserByUserName(@NotNull String userName, HttpServletRequest request) {
         if (isNotAdmin(request)) {
             throw new BusinessException(Error.CLIENT_FORBIDDEN, "非管理员，无权限查询用户");
         }
@@ -164,13 +165,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
     @Override
-    public BaseResponse<List<UserDTO>> searchAllUser(HttpServletRequest request) {
-        if (isNotAdmin(request)) {
-            throw new BusinessException(Error.CLIENT_FORBIDDEN, "无权限查询用户");
+    public BaseResponse<List<UserDTO>> searchAllUser(HttpServletRequest request, int pageNum, int pageSize) {
+        UserDTO loginUser = getLoginUser(request);
+        if (loginUser == null) {
+            throw new BusinessException(Error.CLIENT_NO_AUTH, "需要登录才能查看用户");
         }
-        QueryWrapper<User> userQueryWrapper = new QueryWrapper<>();
-        List<User> originalUserList = this.list(userQueryWrapper);
-        List<UserDTO> safetyUserList = originalUserList.stream().map(ModelHelper.INSTANCE::convertUserToUserDto).collect(Collectors.toList());
+        Page<User> userPage = this.page(new Page<>(pageNum, pageSize));
+        List<UserDTO> safetyUserList = userPage.getRecords().stream().map(ModelHelper.INSTANCE::convertUserToUserDto).collect(Collectors.toList());
         return ResponseUtils.success(safetyUserList);
     }
 
