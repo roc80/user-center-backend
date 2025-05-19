@@ -1,3 +1,6 @@
+logging:
+  level:
+    com.yupi.usercenter: warn
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
