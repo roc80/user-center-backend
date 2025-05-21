@@ -1,10 +1,17 @@
 package com.yupi.usercenter.utils.aspect;
 
+import com.yupi.usercenter.constant.RedisConstant;
+import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StopWatch;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * 全局公共切面类
@@ -14,10 +21,14 @@ import org.springframework.util.StopWatch;
  */
 @Component
 @Aspect
+@Slf4j
 public class GlobalAspect {
 
+    @Autowired
+    RedissonClient redissonClient;
+
     @Around("@annotation(com.yupi.usercenter.utils.aspect.CalcExecutionTime)")
-    public Object around(ProceedingJoinPoint joinPoint) throws Throwable {
+    public Object calcExecutionTime(ProceedingJoinPoint joinPoint) throws Throwable {
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
 
@@ -28,5 +39,27 @@ public class GlobalAspect {
         stopWatch.stop();
         System.out.println(className + "#" + methodName + "()共耗时: " + stopWatch.getTotalTimeSeconds() + "s");
         return result;
+    }
+
+    @Around("@annotation(com.yupi.usercenter.utils.aspect.RedissonTryLock)")
+    public Object redissonTryLock(ProceedingJoinPoint joinPoint) throws Throwable {
+        String lockKeyName = RedisConstant.PROJECT_NAME + ":" + RedisConstant.MODULE_REDIS + ":lock";
+        RLock rLock = redissonClient.getLock(lockKeyName);
+        try {
+            boolean hasAcquired = rLock.tryLock(0L, -1L, TimeUnit.MILLISECONDS);
+            if (!hasAcquired) {
+                return null;
+            }
+
+            joinPoint.proceed();
+
+        } catch (InterruptedException e) {
+            log.error("redisson concurrency try lock throws a exception", e);
+        } finally {
+            if (rLock.isHeldByCurrentThread()) {
+                rLock.unlock();
+            }
+        }
+        return null;
     }
 }

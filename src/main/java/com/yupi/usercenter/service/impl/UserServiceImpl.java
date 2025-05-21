@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.yupi.usercenter.constant.RedisConstant;
 import com.yupi.usercenter.constant.UserConstant;
 import com.yupi.usercenter.exception.BusinessException;
 import com.yupi.usercenter.mapper.UserMapper;
@@ -15,8 +16,12 @@ import com.yupi.usercenter.model.base.Error;
 import com.yupi.usercenter.model.base.ResponseUtils;
 import com.yupi.usercenter.model.helper.ModelHelper;
 import com.yupi.usercenter.service.UserService;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
+import org.redisson.api.RBucket;
+import org.redisson.api.RedissonClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
@@ -24,6 +29,7 @@ import org.springframework.util.DigestUtils;
 
 import javax.servlet.http.HttpServletRequest;
 import java.lang.reflect.Type;
+import java.time.Duration;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
@@ -38,8 +44,12 @@ import java.util.stream.Collectors;
  * @since 2024-10-21 18:42:42
  */
 @Service
+@Slf4j
 public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         implements UserService {
+
+    @Autowired
+    RedissonClient redissonClient;
 
     private static final int USERNAME_MIN_LENGTH = 4;
     private static final int USERNAME_MAX_LENGTH = 256;
@@ -165,6 +175,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
     @Override
+    public BaseResponse<UserDTO> searchUserByUserId(@NotNull Long userId) {
+        User user = this.getById(userId);
+        if (user != null) {
+            return ResponseUtils.success(ModelHelper.INSTANCE.convertUserToUserDto(user));
+        } else {
+            return ResponseUtils.error(Error.CLIENT_PARAMS_ERROR);
+        }
+    }
+
+    @Override
     public BaseResponse<List<UserDTO>> searchAllUser(HttpServletRequest request, int pageNum, int pageSize) {
         UserDTO loginUser = getLoginUser(request);
         if (loginUser == null) {
@@ -186,7 +206,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
      * @author lipeng
      * @since 2025/5/15 10:45
     */
-    @org.jetbrains.annotations.Nullable
+    @Nullable
     private static UserDTO getLoginUser(HttpServletRequest request) {
         if (request == null || request.getSession() == null) {
             return null;
@@ -213,12 +233,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         if (tagNameList == null || tagNameList.isEmpty()) {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "tags为空");
         }
-        // 1.在数据库中查
-//        List<User> matchedUserList = searchUsersInDB(tagNameList);
-        // TODO@lp 这两种查询方式哪个好，等以后数据量起来之后，再对比
-        // 2.在内存中查
-        List<User> matchedUserList = searchUsersInMem(tagNameList);
-
+        List<User> matchedUserList = searchUsersInDB(tagNameList);
         Set<UserDTO> users = matchedUserList.stream().map(ModelHelper.INSTANCE::convertUserToUserDto).collect(Collectors.toSet());
         return ResponseUtils.success(users);
     }
@@ -244,6 +259,41 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         } else {
             return ResponseUtils.success(-1);
         }
+    }
+
+    @Override
+    public BaseResponse<List<UserDTO>> recommendUsers(HttpServletRequest request, int pageNum, int pageSize) {
+        UserDTO loginUser = getLoginUser(request);
+        Page<User> resultPage = null;
+        // TODO@lp 哪些用户使用缓存
+        if (loginUser != null) {
+            Long userId = loginUser.getUserId();
+            if (userId != null && userId < 100) {
+                // 取缓存
+                String redisKeyName = String.format(RedisConstant.PROJECT_NAME + ":" + RedisConstant.MODULE_RECOMMEND + ":recommendUsers:%d", userId);
+                RBucket<Page<User>> rBucket = redissonClient.getBucket(redisKeyName);
+                try {
+                    resultPage = rBucket.get();
+                    if (resultPage == null) {
+                        log.info("userId: " + userId + ", recommendUsers hit cache failed");
+                        // 没取到，查库
+                        resultPage = this.page(new Page<>(pageNum, pageSize));
+                        // 写缓存 TODO@lp 过期时间加offset,防止缓存雪崩。
+                        rBucket.set(resultPage, Duration.ofHours(8));
+                    } else {
+                        log.info("userId: " + userId + ", recommendUsers hit cache succeed");
+                    }
+                } catch (RuntimeException e) {
+                    log.error("recommendUsers write redis error", e);
+                }
+            }
+        }
+        // 未登录
+        if (resultPage == null) {
+            resultPage = this.page(new Page<>(pageNum, pageSize));
+        }
+        List<UserDTO> safetyUserList = resultPage.getRecords().stream().map(ModelHelper.INSTANCE::convertUserToUserDto).collect(Collectors.toList());
+        return ResponseUtils.success(safetyUserList);
     }
 
     /**
@@ -285,6 +335,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         originalUser.setCreateDatetime(new Date());
     }
 
+    /**
+     * 适合用户数量较少时，可以和和数据库查询搭配着查
+     * @author lipeng
+     * @since 2025/5/20 12:51
+    */
     private @NonNull List<User> searchUsersInMem(@NonNull List<String> tagNameList) {
         List<User> userList = this.list();
         return userList.stream().filter(user -> {
