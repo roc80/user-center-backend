@@ -2,7 +2,7 @@ package com.yupi.usercenter.model.helper
 
 import com.yupi.usercenter.constant.UserConstant
 import com.yupi.usercenter.model.User
-import com.yupi.usercenter.model.UserDTO
+import com.yupi.usercenter.model.dto.UserDTO
 
 object ModelHelper {
     fun convertUserDtoToUser(userDTO: UserDTO): User {

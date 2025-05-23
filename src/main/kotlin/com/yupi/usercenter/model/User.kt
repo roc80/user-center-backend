@@ -11,7 +11,7 @@ import java.util.*
  * 用户中心 User表
  * @author lipeng
  * @since 2025/5/15 13:06
-*/
+ */
 @TableName(value = "user")
 data class User(
         /**
@@ -76,7 +76,7 @@ data class User(
         var tagJsonList: String? = null,
 ) : Serializable {
 
-    constructor(userName: String, userPassword: String) : this(){
+    constructor(userName: String, userPassword: String) : this() {
         this.userName = userName
         this.userPassword = userPassword
         createDatetime = Date()

@@ -1,4 +1,4 @@
--- auto-generated definition
+-- 用户表
 create table user
 (
     id              bigint auto_increment comment '主键'
@@ -18,7 +18,6 @@ create table user
 alter table user add column tag_json_list varchar(2048) null comment '标签-JSON列表';
 
 -- 标签表
--- auto-generated definition
 create table tag
 (
     id              bigint auto_increment comment '主键'
@@ -37,3 +36,35 @@ create table tag
 
 create index idx_parent_id
     on tag (parent_id);
+
+-- 队伍表
+create table team
+(
+    id              bigint auto_increment comment 'id'
+        primary key,
+    name            varchar(128)                                not null comment '队伍名称',
+    description     varchar(1024)                               null comment '队伍描述',
+    join_key        varchar(1024)                               null comment '加入队伍所需的密钥',
+    max_num         smallint unsigned default '1'               not null comment '允许加入的最大人数',
+    creator_user_id bigint                                      not null comment '创建者userId',
+    owner_user_id   bigint                                      not null comment '队长userId',
+    status          tinyint           default 0                 not null comment '状态 0-正常',
+    join_type       tinyint           default 0                 not null comment '加入方式 0-任何人都可加入 1-输入密码加入 2-不可加入',
+    create_datetime timestamp         default CURRENT_TIMESTAMP not null comment '创建时间',
+    update_datetime timestamp         default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    is_delete       tinyint           default 0                 not null comment '逻辑删除，0未删除，1已删除'
+);
+
+-- 用户&队伍 关系表
+create table user_team
+(
+    id              bigint auto_increment comment 'id'
+        primary key,
+    user_id         bigint                              not null comment 'userId',
+    team_id         bigint                              not null comment '队伍Id',
+    join_datetime   timestamp default CURRENT_TIMESTAMP not null comment '用户加入队伍时间',
+    create_datetime timestamp default CURRENT_TIMESTAMP not null comment '创建时间',
+    update_datetime timestamp default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    is_delete       tinyint   default 0                 not null comment '逻辑删除，0未删除，1已删除'
+);
+

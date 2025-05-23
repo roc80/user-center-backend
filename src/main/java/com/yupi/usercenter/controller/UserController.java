@@ -1,9 +1,9 @@
 package com.yupi.usercenter.controller;
 
 import com.yupi.usercenter.exception.BusinessException;
-import com.yupi.usercenter.model.UserDTO;
 import com.yupi.usercenter.model.base.BaseResponse;
 import com.yupi.usercenter.model.base.Error;
+import com.yupi.usercenter.model.dto.UserDTO;
 import com.yupi.usercenter.model.request.UserDeleteRequest;
 import com.yupi.usercenter.model.request.UserLoginRequest;
 import com.yupi.usercenter.model.request.UserRegisterRequest;

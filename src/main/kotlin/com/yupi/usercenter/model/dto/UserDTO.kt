@@ -1,4 +1,4 @@
-package com.yupi.usercenter.model
+package com.yupi.usercenter.model.dto
 
 import org.springframework.lang.Nullable
 import java.io.Serializable

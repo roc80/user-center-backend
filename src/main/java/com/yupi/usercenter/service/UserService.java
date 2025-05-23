@@ -2,8 +2,8 @@ package com.yupi.usercenter.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.yupi.usercenter.model.User;
-import com.yupi.usercenter.model.UserDTO;
 import com.yupi.usercenter.model.base.BaseResponse;
+import com.yupi.usercenter.model.dto.UserDTO;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yupi.usercenter.mapper.TeamMapper">
+
+    <resultMap id="BaseResultMap" type="com.yupi.usercenter.model.Team">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="name" column="name" jdbcType="VARCHAR"/>
+            <result property="description" column="description" jdbcType="VARCHAR"/>
+            <result property="joinKey" column="join_key" jdbcType="VARCHAR"/>
+            <result property="maxNum" column="max_num" jdbcType="SMALLINT"/>
+            <result property="creatorUserId" column="creator_user_id" jdbcType="BIGINT"/>
+            <result property="ownerUserId" column="owner_user_id" jdbcType="BIGINT"/>
+            <result property="status" column="status" jdbcType="TINYINT"/>
+            <result property="joinType" column="join_type" jdbcType="TINYINT"/>
+            <result property="createDatetime" column="create_datetime" jdbcType="TIMESTAMP"/>
+            <result property="updateDatetime" column="update_datetime" jdbcType="TIMESTAMP"/>
+            <result property="isDelete" column="is_delete" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,name,description,
+        join_key,max_num,creator_user_id,
+        owner_user_id,status,join_type,
+        create_datetime,update_datetime,is_delete
+    </sql>
+</mapper>
