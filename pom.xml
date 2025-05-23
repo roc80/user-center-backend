@@ -185,15 +185,6 @@
                     <args>
                         <arg>-Xjsr305=strict</arg>
                     </args>
-                    <compilerPlugins>
-                        <plugin>spring</plugin>
-                        <plugin>all-open</plugin>
-                        <plugin>no-arg</plugin>
-                    </compilerPlugins>
-                    <pluginOptions>
-                        <option>all-open:annotation=com.yupi.usercenter.model.annotation.Entity</option>
-                        <option>no-arg:annotation=com.yupi.usercenter.model.annotation.NoArg</option>
-                    </pluginOptions>
                 </configuration>
                 <dependencies>
                     <dependency>
