@@ -4,6 +4,7 @@ import com.yupi.usercenter.model.base.BaseResponse;
 import com.yupi.usercenter.model.base.Error;
 import com.yupi.usercenter.model.base.ResponseUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -12,15 +13,24 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
-    public BaseResponse handleBusinessException(BusinessException e) {
+    public BaseResponse<String> handleBusinessException(BusinessException e) {
         log.warn("BusinessException: " + e.getMessage(), e);
         return ResponseUtils.error(e.getCode(), e.getMessage(), e.getDescription(), e.getDateTime());
     }
 
     @ExceptionHandler(RuntimeException.class)
-    public BaseResponse handleRuntimeException(RuntimeException e) {
+    public BaseResponse<String> handleRuntimeException(RuntimeException e) {
         log.error("RuntimeException: " + e.getMessage(), e);
         return ResponseUtils.error(Error.SERVER_ERROR);
+    }
+
+    /**
+     * Controller接收参数时，反序列化错误
+    */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public BaseResponse<String> handleHttpMessageException(HttpMessageNotReadableException e) {
+        log.error("HttpMessageNotReadableException: " + e.getMessage(), e);
+        return ResponseUtils.error(Error.CLIENT_PARAMS_ERROR, "参数格式错误");
     }
 
 }

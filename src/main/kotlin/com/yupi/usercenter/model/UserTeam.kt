@@ -1,9 +1,6 @@
 package com.yupi.usercenter.model
 
-import com.baomidou.mybatisplus.annotation.IdType
-import com.baomidou.mybatisplus.annotation.TableField
-import com.baomidou.mybatisplus.annotation.TableId
-import com.baomidou.mybatisplus.annotation.TableName
+import com.baomidou.mybatisplus.annotation.*
 import java.io.Serializable
 import java.util.*
 
@@ -53,6 +50,7 @@ data class UserTeam(
         /**
          * 逻辑删除，0未删除，1已删除
          */
+        @TableLogic
         @TableField(value = "is_delete")
         private val isDelete: Int? = null,
 ) : Serializable

@@ -35,7 +35,7 @@ public class UserController {
         if (userRegisterRequest == null) {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "请求体为空");
         }
-        return userService.userRegister(userRegisterRequest.getUserName(), userRegisterRequest.getUserPassword(), userRegisterRequest.getRepeatPassword());
+        return userService.userRegister(userRegisterRequest.getUsername(), userRegisterRequest.getPassword(), userRegisterRequest.getRepeatPassword());
     }
 
     @PostMapping("/login")
@@ -43,7 +43,7 @@ public class UserController {
         if (userLoginRequest == null) {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "请求体为空");
         }
-        return userService.userLogin(userLoginRequest.getUserName(), userLoginRequest.getUserPassword(), request);
+        return userService.userLogin(userLoginRequest.getUsername(), userLoginRequest.getPassword(), request);
     }
 
     @PostMapping("/logout")
