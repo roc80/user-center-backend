@@ -1,16 +1,20 @@
 package com.yupi.usercenter.utils.aspect;
 
 import com.yupi.usercenter.constant.RedisConstant;
+import com.yupi.usercenter.utils.UserHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.annotation.Before;
+import org.aspectj.lang.annotation.Pointcut;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StopWatch;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -26,6 +30,9 @@ public class GlobalAspect {
 
     @Autowired
     RedissonClient redissonClient;
+
+    @Autowired
+    HttpServletRequest request;
 
     @Around("@annotation(com.yupi.usercenter.utils.aspect.CalcExecutionTime)")
     public Object calcExecutionTime(ProceedingJoinPoint joinPoint) throws Throwable {
@@ -61,5 +68,13 @@ public class GlobalAspect {
             }
         }
         return null;
+    }
+
+    @Pointcut("@annotation(com.yupi.usercenter.utils.aspect.RequiredLogin)")
+    public void requiredLoginPointCut() {}
+
+    @Before("requiredLoginPointCut()")
+    public void getUserLoginInfo() {
+        UserHelper.getUserDtoFromRequest(request);
     }
 }

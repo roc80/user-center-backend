@@ -16,6 +16,7 @@ import com.yupi.usercenter.model.base.ResponseUtils;
 import com.yupi.usercenter.model.dto.UserDTO;
 import com.yupi.usercenter.model.helper.ModelHelper;
 import com.yupi.usercenter.service.UserService;
+import com.yupi.usercenter.utils.UserHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
@@ -58,7 +59,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     // TODO@lp 不能硬编码在类中
     public static final String SUFFIX_SALT = "suARnTClqnWOx8";
-    private static final String USER_LOGIN_INFO = "user_login_info";
 
     public BaseResponse<Long> userRegister(@NonNull String userName, @NonNull String userPassword, @NonNull String repeatPassword) {
         if (StringUtils.isAnyBlank(userName, userPassword, repeatPassword)) {
@@ -123,7 +123,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         String needCheckPasswordMD5 = DigestUtils.md5DigestAsHex((userPassword + SUFFIX_SALT).getBytes());
         if (needCheckPasswordMD5.equals(savedUserPasswordMD5)) {
             UserDTO userDTO = ModelHelper.INSTANCE.convertUserToUserDto(savedUser);
-            request.getSession().setAttribute(USER_LOGIN_INFO, userDTO);
+            request.getSession().setAttribute(UserConstant.USER_LOGIN_INFO, userDTO);
             return ResponseUtils.success(userDTO);
         } else {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "密码校验失败");
@@ -132,13 +132,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     @Override
     public BaseResponse<Boolean> userLogout(HttpServletRequest request) {
-        request.getSession().removeAttribute(USER_LOGIN_INFO);
+        request.getSession().removeAttribute(UserConstant.USER_LOGIN_INFO);
         return ResponseUtils.success(true);
     }
 
     @Override
     public BaseResponse<List<UserDTO>> searchUserByUserName(@NotNull String userName, HttpServletRequest request) {
-        if (isNotAdmin(request)) {
+        if (!isAdmin(request)) {
             throw new BusinessException(Error.CLIENT_FORBIDDEN, "非管理员，无权限查询用户");
         }
         QueryWrapper<User> userQueryWrapper = new QueryWrapper<User>().like("user_name", userName);
@@ -149,7 +149,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     @Override
     public BaseResponse<Boolean> deleteUser(@NotNull Long userId, HttpServletRequest request) {
-        if (isNotAdmin(request)) {
+        if (!isAdmin(request)) {
             throw new BusinessException(Error.CLIENT_FORBIDDEN, "无权限删除用户");
         }
         boolean deleted = this.removeById(userId);
@@ -161,7 +161,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     @Override
     public @Nullable BaseResponse<UserDTO> currentUser(HttpServletRequest request) {
-        Object userLoginInfo = request.getSession().getAttribute(USER_LOGIN_INFO);
+        Object userLoginInfo = request.getSession().getAttribute(UserConstant.USER_LOGIN_INFO);
         if (!(userLoginInfo instanceof UserDTO)) {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "session中存储的用户信息异常");
         }
@@ -170,7 +170,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "该用户不存在");
         }
         UserDTO userDTO = ModelHelper.INSTANCE.convertUserToUserDto(userPO);
-        request.getSession().setAttribute(USER_LOGIN_INFO, userDTO);
+        request.getSession().setAttribute(UserConstant.USER_LOGIN_INFO, userDTO);
         return ResponseUtils.success(userDTO);
     }
 
@@ -186,42 +186,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     @Override
     public BaseResponse<List<UserDTO>> searchAllUser(HttpServletRequest request, int pageNum, int pageSize) {
-        UserDTO loginUser = getLoginUser(request);
-        if (loginUser == null) {
-            throw new BusinessException(Error.CLIENT_NO_AUTH, "需要登录才能查看用户");
-        }
+        UserHelper.getUserDtoFromRequest(request);
         Page<User> userPage = this.page(new Page<>(pageNum, pageSize));
         List<UserDTO> safetyUserList = userPage.getRecords().stream().map(ModelHelper.INSTANCE::convertUserToUserDto).collect(Collectors.toList());
         return ResponseUtils.success(safetyUserList);
     }
 
-    private boolean isNotAdmin(HttpServletRequest request) {
-        UserDTO loginUser = getLoginUser(request);
-        if (loginUser == null) return true;
-        return !UserConstant.USER_ROLE_ADMIN.equals(loginUser.getUserRole());
+    private boolean isAdmin(HttpServletRequest request) {
+        UserDTO loginUser = UserHelper.getUserDtoFromRequest(request);
+        return UserConstant.USER_ROLE_ADMIN.equals(loginUser.getUserRole());
     }
-
-    /**
-     * @return null or userDTO(userId > 0)
-     * @author lipeng
-     * @since 2025/5/15 10:45
-    */
-    @Nullable
-    private static UserDTO getLoginUser(HttpServletRequest request) {
-        if (request == null || request.getSession() == null) {
-            return null;
-        }
-        Object userLoginInfo = request.getSession().getAttribute(USER_LOGIN_INFO);
-        if (!(userLoginInfo instanceof UserDTO)) {
-            return null;
-        }
-        UserDTO loginUser = (UserDTO) userLoginInfo;
-        if (loginUser.getUserId() == null || loginUser.getUserId() <= 0) {
-            return null;
-        }
-        return loginUser;
-    }
-
 
     /**
      * @return 返回的用户包含传入的所有tag
@@ -244,10 +218,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             throw new BusinessException(Error.CLIENT_PARAMS_NULL, "");
         }
         // 校验权限
-        UserDTO loginUser = getLoginUser(request);
-        boolean isSameUser = loginUser != null
-                && userDTO.getUserId().equals(loginUser.getUserId());
-        if (isNotAdmin(request) && !isSameUser) {
+        UserDTO loginUser = UserHelper.getUserDtoFromRequest(request);
+        boolean isSameUser = userDTO.getUserId().equals(loginUser.getUserId());
+        if (!isAdmin(request) && !isSameUser) {
             throw new BusinessException(Error.CLIENT_NO_AUTH, "无权限修改");
         }
         User partialUser = ModelHelper.INSTANCE.convertUserDtoToUser(userDTO);
@@ -263,32 +236,30 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     @Override
     public BaseResponse<List<UserDTO>> recommendUsers(HttpServletRequest request, int pageNum, int pageSize) {
-        UserDTO loginUser = getLoginUser(request);
+        UserDTO loginUser = UserHelper.getUserDtoFromRequest(request);
         Page<User> resultPage = null;
         // TODO@lp 哪些用户使用缓存
-        if (loginUser != null) {
-            Long userId = loginUser.getUserId();
-            if (userId != null && userId < 100) {
-                // 取缓存
-                String redisKeyName = String.format(RedisConstant.PROJECT_NAME + ":" + RedisConstant.MODULE_RECOMMEND + ":recommendUsers:%d", userId);
-                RBucket<Page<User>> rBucket = redissonClient.getBucket(redisKeyName);
-                try {
-                    resultPage = rBucket.get();
-                    if (resultPage == null) {
-                        log.info("userId: " + userId + ", recommendUsers hit cache failed");
-                        // 没取到，查库
-                        resultPage = this.page(new Page<>(pageNum, pageSize));
-                        // 写缓存 TODO@lp 过期时间加offset,防止缓存雪崩。
-                        rBucket.set(resultPage, Duration.ofHours(8));
-                    } else {
-                        log.info("userId: " + userId + ", recommendUsers hit cache succeed");
-                    }
-                } catch (RuntimeException e) {
-                    log.error("recommendUsers write redis error", e);
+        Long userId = loginUser.getUserId();
+        if (userId != null && userId < 100) {
+            // 取缓存
+            String redisKeyName = String.format(RedisConstant.PROJECT_NAME + ":" + RedisConstant.MODULE_RECOMMEND + ":recommendUsers:%d", userId);
+            RBucket<Page<User>> rBucket = redissonClient.getBucket(redisKeyName);
+            try {
+                resultPage = rBucket.get();
+                if (resultPage == null) {
+                    log.info("userId: " + userId + ", recommendUsers hit cache failed");
+                    // 没取到，查库
+                    resultPage = this.page(new Page<>(pageNum, pageSize));
+                    // 写缓存 TODO@lp 过期时间加offset,防止缓存雪崩。
+                    rBucket.set(resultPage, Duration.ofHours(8));
+                } else {
+                    log.info("userId: " + userId + ", recommendUsers hit cache succeed");
                 }
+            } catch (RuntimeException e) {
+                log.error("recommendUsers write redis error", e);
             }
         }
-        // 未登录
+        // 没走缓存
         if (resultPage == null) {
             resultPage = this.page(new Page<>(pageNum, pageSize));
         }

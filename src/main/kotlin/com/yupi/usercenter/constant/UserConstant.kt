@@ -11,4 +11,6 @@ object UserConstant {
 
     const val USER_STATE_NORMAL = "normal"
     const val USER_STATE_INVALID = "invalid"
+
+    const val USER_LOGIN_INFO = "user_login_info"
 }
