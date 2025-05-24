@@ -17,12 +17,13 @@
             <result property="createDatetime" column="create_datetime" jdbcType="TIMESTAMP"/>
             <result property="updateDatetime" column="update_datetime" jdbcType="TIMESTAMP"/>
             <result property="isDelete" column="is_delete" jdbcType="TINYINT"/>
+            <result property="memberIds" column="member_ids" jdbcType="VARCHAR"/>
     </resultMap>
 
     <sql id="Base_Column_List">
         id,name,description,
         join_key,max_num,creator_user_id,
         owner_user_id,status,join_type,
-        create_datetime,update_datetime,is_delete
+        create_datetime,update_datetime,is_delete,member_ids
     </sql>
 </mapper>

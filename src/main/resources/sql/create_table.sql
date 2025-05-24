@@ -54,17 +54,5 @@ create table team
     update_datetime timestamp         default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
     is_delete       tinyint           default 0                 not null comment '逻辑删除，0未删除，1已删除'
 );
-
--- 用户&队伍 关系表
-create table user_team
-(
-    id              bigint auto_increment comment 'id'
-        primary key,
-    user_id         bigint                              not null comment 'userId',
-    team_id         bigint                              not null comment '队伍Id',
-    join_datetime   timestamp default CURRENT_TIMESTAMP not null comment '用户加入队伍时间',
-    create_datetime timestamp default CURRENT_TIMESTAMP not null comment '创建时间',
-    update_datetime timestamp default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
-    is_delete       tinyint   default 0                 not null comment '逻辑删除，0未删除，1已删除'
-);
+alter table team add column member_ids varchar(1024) not null comment '当前队伍成员的id, 英文逗号作分割符';
 

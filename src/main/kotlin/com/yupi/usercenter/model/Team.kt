@@ -98,6 +98,7 @@ data class Team(
             request.joinKey,
             null,
             null,
-            null
+            null,
+            userId.toString()
     )
 }
