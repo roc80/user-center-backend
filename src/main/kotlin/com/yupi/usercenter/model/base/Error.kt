@@ -24,4 +24,5 @@ enum class Error(
     CLIENT_PARAMS_NULL(40005, "请求参数为空"),
 
     SERVER_ERROR(50000, "服务端错误"),
+    SERVER_DIRTY_DATA(50001, "数据库脏数据")
 }

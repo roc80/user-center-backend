@@ -138,8 +138,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     @Override
     public BaseResponse<List<UserDTO>> searchUserByUserName(@NotNull String userName, HttpServletRequest request) {
-        if (!isAdmin(request)) {
-            throw new BusinessException(Error.CLIENT_FORBIDDEN, "非管理员，无权限查询用户");
+        if (!UserHelper.isAdmin(UserHelper.getUserDtoFromRequest(request))) {
+            throw new BusinessException(Error.CLIENT_FORBIDDEN, "无权限查询用户");
         }
         QueryWrapper<User> userQueryWrapper = new QueryWrapper<User>().like("user_name", userName);
         List<User> originalUserList = this.list(userQueryWrapper);
@@ -149,7 +149,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     @Override
     public BaseResponse<Boolean> deleteUser(@NotNull Long userId, HttpServletRequest request) {
-        if (!isAdmin(request)) {
+        if (!UserHelper.isAdmin(UserHelper.getUserDtoFromRequest(request))) {
             throw new BusinessException(Error.CLIENT_FORBIDDEN, "无权限删除用户");
         }
         boolean deleted = this.removeById(userId);
@@ -192,11 +192,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         return ResponseUtils.success(safetyUserList);
     }
 
-    private boolean isAdmin(HttpServletRequest request) {
-        UserDTO loginUser = UserHelper.getUserDtoFromRequest(request);
-        return UserConstant.USER_ROLE_ADMIN.equals(loginUser.getUserRole());
-    }
-
     /**
      * @return 返回的用户包含传入的所有tag
      * @author lipeng
@@ -220,7 +215,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         // 校验权限
         UserDTO loginUser = UserHelper.getUserDtoFromRequest(request);
         boolean isSameUser = userDTO.getUserId().equals(loginUser.getUserId());
-        if (!isAdmin(request) && !isSameUser) {
+        if (!UserHelper.isAdmin(loginUser) && !isSameUser) {
             throw new BusinessException(Error.CLIENT_NO_AUTH, "无权限修改");
         }
         User partialUser = ModelHelper.INSTANCE.convertUserDtoToUser(userDTO);

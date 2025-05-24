@@ -31,4 +31,11 @@ public class UserHelper {
         return loginUser;
     }
 
+    public static boolean isAdmin(UserDTO loginUser) {
+        if (loginUser == null) {
+            throw new BusinessException(Error.CLIENT_NO_AUTH, "");
+        }
+        return UserConstant.USER_ROLE_ADMIN.equals(loginUser.getUserRole());
+    }
+
 }
