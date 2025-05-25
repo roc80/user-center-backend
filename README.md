@@ -1,18 +1,7 @@
-### 数据表设计
+### Project Introduction
+#### Feature
+1. This is a user-center, user can find other users by tags after login.
+2. Other systems will use this project as a basic data support.
 
-#### 用户表
-
-| 字段名             | 字段类型          | 备注                     | 
-|-----------------|---------------|------------------------|
-| id              | bigint        |                        |
-| user_name       | varchar(256)  |                        |
-| avatar_url      | varchar(1024) |                        |
-| user_password   | varchar(2048) |                        |
-| gender          | tinyint       | 0 - 男； 1 - 女           |
-| phone           | varchar(128)  |                        |
-| email           | varchar(256)  |                        |
-| is_valid        | tinyint       | 用户状态异常 0 - 正常， 1 - 异常  |
-| create_datetime | timestamp     |                        |
-| update_datetime | timestamp     |                        |
-| is_delete       | tinyint       | 逻辑上删除 0 - 未删除， 1 - 已删除 |
-| user_role       | int           | 用户角色 0-普通用户 1-管理员      |
+### Project Structure
+https://githubtree.mgks.dev/repo/roc80/user-center-backend/master/
