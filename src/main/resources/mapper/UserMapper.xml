@@ -5,19 +5,19 @@
 <mapper namespace="com.yupi.usercenter.mapper.UserMapper">
 
     <resultMap id="BaseResultMap" type="com.yupi.usercenter.model.User">
-            <id property="id" column="id" jdbcType="BIGINT"/>
-            <result property="userName" column="user_name" jdbcType="VARCHAR"/>
-            <result property="avatarUrl" column="avatar_url" jdbcType="VARCHAR"/>
-            <result property="userPassword" column="user_password" jdbcType="VARCHAR"/>
-            <result property="gender" column="gender" jdbcType="TINYINT"/>
-            <result property="phone" column="phone" jdbcType="VARCHAR"/>
-            <result property="email" column="email" jdbcType="VARCHAR"/>
-            <result property="createDatetime" column="create_datetime" jdbcType="TIMESTAMP"/>
-            <result property="updateDatetime" column="update_datetime" jdbcType="TIMESTAMP"/>
-            <result property="isValid" column="is_valid" jdbcType="TINYINT"/>
-            <result property="isDelete" column="is_delete" jdbcType="TINYINT"/>
-            <result property="userRole" column="user_role" jdbcType="INTEGER"/>
-            <result property="tagJsonList" column="tag_json_list" jdbcType="VARCHAR"/>
+        <id property="id" column="id" jdbcType="BIGINT"/>
+        <result property="userName" column="user_name" jdbcType="VARCHAR"/>
+        <result property="avatarUrl" column="avatar_url" jdbcType="VARCHAR"/>
+        <result property="userPassword" column="user_password" jdbcType="VARCHAR"/>
+        <result property="gender" column="gender" jdbcType="TINYINT"/>
+        <result property="phone" column="phone" jdbcType="VARCHAR"/>
+        <result property="email" column="email" jdbcType="VARCHAR"/>
+        <result property="createDatetime" column="create_datetime" jdbcType="TIMESTAMP"/>
+        <result property="updateDatetime" column="update_datetime" jdbcType="TIMESTAMP"/>
+        <result property="isValid" column="is_valid" jdbcType="TINYINT"/>
+        <result property="isDelete" column="is_delete" jdbcType="TINYINT"/>
+        <result property="userRole" column="user_role" jdbcType="INTEGER"/>
+        <result property="tagJsonList" column="tag_json_list" jdbcType="VARCHAR"/>
     </resultMap>
 
     <sql id="Base_Column_List">

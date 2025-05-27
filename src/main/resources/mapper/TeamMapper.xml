@@ -5,25 +5,66 @@
 <mapper namespace="com.yupi.usercenter.mapper.TeamMapper">
 
     <resultMap id="BaseResultMap" type="com.yupi.usercenter.model.Team">
-            <id property="id" column="id" jdbcType="BIGINT"/>
-            <result property="name" column="name" jdbcType="VARCHAR"/>
-            <result property="description" column="description" jdbcType="VARCHAR"/>
-            <result property="joinKey" column="join_key" jdbcType="VARCHAR"/>
-            <result property="maxNum" column="max_num" jdbcType="SMALLINT"/>
-            <result property="creatorUserId" column="creator_user_id" jdbcType="BIGINT"/>
-            <result property="ownerUserId" column="owner_user_id" jdbcType="BIGINT"/>
-            <result property="status" column="status" jdbcType="TINYINT"/>
-            <result property="joinType" column="join_type" jdbcType="TINYINT"/>
-            <result property="createDatetime" column="create_datetime" jdbcType="TIMESTAMP"/>
-            <result property="updateDatetime" column="update_datetime" jdbcType="TIMESTAMP"/>
-            <result property="isDelete" column="is_delete" jdbcType="TINYINT"/>
-            <result property="memberIds" column="member_ids" jdbcType="VARCHAR"/>
+        <id property="id" column="id" jdbcType="BIGINT"/>
+        <result property="name" column="name" jdbcType="VARCHAR"/>
+        <result property="description" column="description" jdbcType="VARCHAR"/>
+        <result property="joinKey" column="join_key" jdbcType="VARCHAR"/>
+        <result property="maxNum" column="max_num" jdbcType="SMALLINT"/>
+        <result property="creatorUserId" column="creator_user_id" jdbcType="BIGINT"/>
+        <result property="ownerUserId" column="owner_user_id" jdbcType="BIGINT"/>
+        <result property="status" column="status" jdbcType="TINYINT"/>
+        <result property="joinType" column="join_type" jdbcType="TINYINT"/>
+        <result property="createDatetime" column="create_datetime" jdbcType="TIMESTAMP"/>
+        <result property="updateDatetime" column="update_datetime" jdbcType="TIMESTAMP"/>
+        <result property="isDelete" column="is_delete" jdbcType="TINYINT"/>
+        <result property="memberIds" column="member_ids" jdbcType="VARCHAR"/>
     </resultMap>
 
     <sql id="Base_Column_List">
-        id,name,description,
+        id
+        ,name,description,
         join_key,max_num,creator_user_id,
         owner_user_id,status,join_type,
         create_datetime,update_datetime,is_delete,member_ids
     </sql>
+
+    <update id="updateTeamMemberIds" parameterType="map">
+        UPDATE team
+        <set>
+            member_ids=#{memberIds}
+        </set>
+        WHERE id=#{teamId}
+    </update>
+    <update id="updateTeamOwner">
+        UPDATE team
+        <set>
+            ownerUserId=#{nextOwnerUserId}
+        </set>
+        WHERE id=#{teamId}
+    </update>
+    <select id="selectTeamsByOwnerUserId" resultType="java.lang.Integer">
+        SELECT COUNT(*) AS TOTAL
+        FROM team
+        WHERE ownerUserId = #{ownerUserId}
+    </select>
+    <select id="selectAllTeam" parameterType="map" resultType="com.yupi.usercenter.model.Team">
+        SELECT *
+        FROM team
+        <where>
+            <if test="!queryAllJoinType">
+                join_type != #{privateJoinType}
+            </if>
+        </where>
+    </select>
+    <select id="selectTeamByPage" resultType="com.yupi.usercenter.model.Team">
+        SELECT *
+        FROM team
+        <where>
+            <if test="!queryAllJoinType">
+                join_type != #{privateJoinType}
+            </if>
+        </where>
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
 </mapper>

@@ -22,6 +22,7 @@ enum class Error(
     CLIENT_FORBIDDEN(40003, "无权限"),
     CLIENT_PATH_ERROR(40004, "请求路径错误"),
     CLIENT_PARAMS_NULL(40005, "请求参数为空"),
+    CLIENT_OPERATION_DENIED(40006, "客户端操作被拒绝"),
 
     SERVER_ERROR(50000, "服务端错误"),
     SERVER_DIRTY_DATA(50001, "数据库脏数据")

@@ -7,6 +7,8 @@ import com.yupi.usercenter.model.dto.TeamDTO;
 import com.yupi.usercenter.model.dto.UserDTO;
 import com.yupi.usercenter.model.request.TeamCreateRequest;
 import com.yupi.usercenter.model.request.TeamUpdateRequest;
+import com.yupi.usercenter.model.request.UserExitTeamRequest;
+import com.yupi.usercenter.model.request.UserJoinTeamRequest;
 import com.yupi.usercenter.service.TeamService;
 import com.yupi.usercenter.utils.UserHelper;
 import org.springframework.web.bind.annotation.*;
@@ -77,13 +79,22 @@ public class TeamController {
     }
 
     @PostMapping("/{teamId}/members")
-    public BaseResponse<Boolean> userJoinTeam(HttpServletRequest request, @PathVariable Long teamId) {
-        // TODO@lp 用户加入队伍
+    public BaseResponse<Boolean> userJoinTeam(HttpServletRequest request, @PathVariable Long teamId, @RequestBody(required = false) UserJoinTeamRequest userJoinTeamRequest) {
+        if (teamId <= 0) {
+            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "");
+        }
+        return teamService.userJoinTeam(request, teamId, userJoinTeamRequest);
     }
 
     @DeleteMapping("/{teamId}/members/{userId}")
-    public BaseResponse<Boolean> userExitTeam(HttpServletRequest request, @PathVariable Long teamId, @PathVariable Long userId) {
-        // TODO@lp 用户退出队伍
+    public BaseResponse<Boolean> userExitTeam(HttpServletRequest request,
+                                              @PathVariable Long teamId,
+                                              @PathVariable Long userId,
+                                              @RequestBody(required = false) UserExitTeamRequest userExitTeamRequest) {
+        if (teamId <= 0 || userId <= 0) {
+            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "");
+        }
+        return teamService.userExitTeam(request, teamId, userId, userExitTeamRequest);
     }
 
 }

@@ -15,6 +15,10 @@ import javax.servlet.http.HttpServletRequest;
 */
 public class UserHelper {
 
+    /**
+     * @return Login UserDTO, 非空
+     * 如果拿不到合法的userId，则会抛出自定义异常。
+    */
     @NotNull
     public static UserDTO getUserDtoFromRequest(HttpServletRequest request) {
         if (request == null || request.getSession() == null) {
@@ -38,4 +42,10 @@ public class UserHelper {
         return UserConstant.USER_ROLE_ADMIN.equals(loginUser.getUserRole());
     }
 
+    public static boolean isUsrValid(UserDTO loginUser) {
+        if (loginUser == null) {
+            throw new BusinessException(Error.CLIENT_NO_AUTH, "");
+        }
+        return UserConstant.USER_STATE_NORMAL.equals(loginUser.getState());
+    }
 }
