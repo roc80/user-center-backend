@@ -6,5 +6,5 @@ object TeamConstant {
     */
     const val TEAM_MEMBER_NUM_MAX = 20
     const val TEAM_MEMBER_NUM_MIN = 1
-    const val TEAM_MEMBER_ID_SPLIT = ","
+    const val TEAM_MEMBER_ID_SPLIT = " "
 }

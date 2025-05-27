@@ -99,8 +99,8 @@ public class UserController {
     }
 
     @GetMapping("/recommend")
-    public BaseResponse<List<UserDTO>> recommendUsers(HttpServletRequest request, int pageNum, int pageSize) {
-        if (pageNum <= 0 || pageSize <= 0) {
+    public BaseResponse<List<UserDTO>> recommendUsers(HttpServletRequest request, Integer pageNum, Integer pageSize) {
+        if (pageNum == null || pageNum <= 0 || pageSize == null || pageSize <= 0) {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "分页参数错误");
         }
         return userService.recommendUsers(request, pageNum, pageSize);

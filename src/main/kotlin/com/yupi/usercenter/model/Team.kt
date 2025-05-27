@@ -32,6 +32,12 @@ data class Team(
         var description: String?,
 
         /**
+         * 加入队伍所需的密钥
+         */
+        @TableField(value = "join_key")
+        var joinKey: String?,
+
+        /**
          * 允许加入的最大人数
          */
         @TableField(value = "max_num")
@@ -62,12 +68,6 @@ data class Team(
         var joinType: Int,
 
         /**
-         * 加入队伍所需的密钥
-         */
-        @TableField(value = "join_key")
-        var joinKey: String?,
-
-        /**
          * 创建时间
          */
         @TableField(value = "create_datetime")
@@ -96,12 +96,12 @@ data class Team(
             null,
             request.name,
             request.description,
+            request.joinKey,
             request.maxNum,
             loginUserId,
             loginUserId,
             0,
             request.joinType,
-            request.joinKey,
             null,
             null,
             null,
