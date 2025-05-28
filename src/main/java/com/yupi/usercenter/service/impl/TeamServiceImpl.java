@@ -100,8 +100,16 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
 
     @Override
     public BaseResponse<List<TeamDTO>> retrieveTeamsByPage(HttpServletRequest request, int pageNum, int pageSize) {
+        if (pageNum <= 0 || pageSize <= 0) {
+            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "");
+        }
         boolean queryAllJoinType = UserHelper.isAdmin(UserHelper.getUserDtoFromRequest(request));
-        List<Team> teamList = teamMapper.selectTeamByPage(queryAllJoinType, TeamTypeEnum.PRIVATE.getValue(), pageNum, pageSize);
+        List<Team> teamList = teamMapper.selectTeamByPage(
+                queryAllJoinType,
+                TeamTypeEnum.PRIVATE.getValue(),
+                (pageNum - 1) * pageSize,
+                pageSize
+        );
         return ResponseUtils.success(getTeamDTOList(teamList));
     }
 
