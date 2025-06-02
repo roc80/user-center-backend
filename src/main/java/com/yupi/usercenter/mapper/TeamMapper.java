@@ -20,7 +20,7 @@ public interface TeamMapper extends BaseMapper<Team> {
 
     int updateTeamOwner(@Param("teamId") Long teamId, @Param("nextOwnerUserId") long nextOwnerUserId);
 
-    int selectTeamsByOwnerUserId(@Param("ownerUserId") Long ownerUserId);
+    List<Team> selectTeamsByOwnerUserId(@Param("ownerUserId") Long ownerUserId);
 
     List<Team> selectAllTeam(@Param("queryAllJoinType") boolean queryAllJoinType, @Param("privateJoinType") int privateJoinType);
 

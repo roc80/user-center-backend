@@ -14,7 +14,6 @@ import com.yupi.usercenter.model.dto.UserDTO;
 import com.yupi.usercenter.model.enums.TeamTypeEnum;
 import com.yupi.usercenter.model.request.TeamCreateRequest;
 import com.yupi.usercenter.model.request.TeamUpdateRequest;
-import com.yupi.usercenter.model.request.UserExitTeamRequest;
 import com.yupi.usercenter.model.request.UserJoinTeamRequest;
 import com.yupi.usercenter.service.TeamService;
 import com.yupi.usercenter.service.UserService;
@@ -63,7 +62,8 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "最大人数错误");
         }
 //        查询已创建队伍数量，要<=5
-        int currentUserOwnedTeams = teamMapper.selectTeamsByOwnerUserId(userId);
+        List<Team> teams = teamMapper.selectTeamsByOwnerUserId(userId);
+        int currentUserOwnedTeams = teams.size();
         if (currentUserOwnedTeams >= 5) {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "当前用户拥有的队伍数量超过5个，不允许继续创建!");
         }
@@ -74,28 +74,61 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
     }
 
     @Override
-    public BaseResponse<List<TeamDTO>> retrieveTeams(HttpServletRequest request) {
-        boolean queryAllJoinType = UserHelper.isAdmin(UserHelper.getUserDtoFromRequest(request));
-        List<Team> list = teamMapper.selectAllTeam(queryAllJoinType, TeamTypeEnum.PRIVATE.getValue());
+    public BaseResponse<List<TeamDTO>> retrieveTeams(boolean isAdmin) {
+        List<Team> list = teamMapper.selectAllTeam(isAdmin, TeamTypeEnum.PRIVATE.getValue());
         List<TeamDTO> teamDTOList = getTeamDTOList(list);
         return ResponseUtils.success(teamDTOList);
     }
 
+    @Override
+    public BaseResponse<List<TeamDTO>> retrieveTeamsOwnedByUser(Long ownerUserId) {
+        List<Team> teams = teamMapper.selectTeamsByOwnerUserId(ownerUserId);
+        List<TeamDTO> teamDTOList = getTeamDTOList(teams);
+        return ResponseUtils.success(teamDTOList);
+    }
+
+    @Override
+    public BaseResponse<List<TeamDTO>> retrieveTeamsWhereUserIsMember(Long userId) {
+        List<Team> allTeam = teamMapper.selectAllTeam(true, TeamTypeEnum.PRIVATE.getValue());
+        List<Team> joinedTeams = allTeam.stream().filter(team -> {
+            List<Long> memberIdList = convertMemberIdsToList(team.getMemberIds());
+            return memberIdList.contains(userId);
+        }).collect(Collectors.toList());
+        return ResponseUtils.success(getTeamDTOList(joinedTeams));
+    }
+
+    @Override
+    public BaseResponse<TeamDTO> retrieveTeamById(Long id) {
+        if (id == null) {
+            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "");
+        }
+        Team team = teamMapper.selectById(id);
+        if (team == null) {
+            ResponseUtils.error(Error.CLIENT_PARAMS_ERROR, "不存在");
+        }
+        return ResponseUtils.success(getTeamDTO(team));
+    }
+
     @NotNull
     private List<TeamDTO> getTeamDTOList(List<Team> list) {
-        // 查询当前队伍的用户信息
-        return list.stream().map(team -> {
-            List<UserDTO> userDTOList = new ArrayList<>();
-            List<Long> memberIdList = convertMemberIdsToList(team.getMemberIds());
-            memberIdList.forEach(userId -> {
-                BaseResponse<UserDTO> response = userService.searchUserByUserId(userId);
-                if (response.getCode() != Error.OK.getCode()) {
-                    throw new BusinessException(Error.SERVER_DIRTY_DATA, "");
-                }
-                userDTOList.add(response.getData());
-            });
-            return new TeamDTO(team, userDTOList);
-        }).collect(Collectors.toList());
+        return list.stream().map(this::getTeamDTO).collect(Collectors.toList());
+    }
+
+    @NotNull
+    private TeamDTO getTeamDTO(Team team) {
+        if (team == null) {
+            return new TeamDTO();
+        }
+        List<UserDTO> userDTOList = new ArrayList<>();
+        List<Long> memberIdList = convertMemberIdsToList(team.getMemberIds());
+        memberIdList.forEach(userId -> {
+            BaseResponse<UserDTO> response = userService.searchUserByUserId(userId);
+            if (response.getCode() != Error.OK.getCode()) {
+                throw new BusinessException(Error.SERVER_DIRTY_DATA, "");
+            }
+            userDTOList.add(response.getData());
+        });
+        return new TeamDTO(team, userDTOList);
     }
 
     @Override
@@ -115,55 +148,90 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
 
     @Override
     public BaseResponse<Boolean> updateTeam(HttpServletRequest httpServletRequest, @NonNull TeamUpdateRequest teamUpdateRequest) {
-        UserDTO loginUser = UserHelper.getUserDtoFromRequest(httpServletRequest);
-        Team teamPo = this.getById(teamUpdateRequest.getId());
-        if (teamPo == null) {
-            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "队伍不存在");
-        }
-        //        - [ ] 除管理员外，只有owner可以修改
-        final boolean idAdmin = UserHelper.isAdmin(loginUser);
-        if (!idAdmin) {
-            if (teamPo.getOwnerUserId() != Optional.ofNullable(loginUser.getUserId()).orElse(-1L)) {
-                throw new BusinessException(Error.CLIENT_FORBIDDEN, "只有队长可以修改");
-            }
-        }
-//        - [ ] name trim()之后 长度非0
+        // name trim()之后 长度非0
         if (teamUpdateRequest.getName() != null && StringUtils.isBlank(teamUpdateRequest.getName())) {
-            throw new BusinessException(Error.CLIENT_PARAMS_ERROR ,"队伍名称不能为空");
+            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "队伍名称不能为空");
         }
-//        - [ ] maxNum [当前队员人数, max]
-        List<Long> memberIdList = convertMemberIdsToList(teamPo.getMemberIds());
-        int currentMemberNum = memberIdList.size();
-        Integer updateRequestMaxNum = teamUpdateRequest.getMaxNum();
-        if (updateRequestMaxNum != null) {
-            if (updateRequestMaxNum < currentMemberNum || updateRequestMaxNum > TeamConstant.TEAM_MEMBER_NUM_MAX) {
-                throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "队伍人数错误");
-            }
-        }
-//        - [ ] ownerUsrId 必须在当前队伍
-        Long newOwnerUserId = teamUpdateRequest.getOwnerUserId();
-        if (newOwnerUserId != null && teamPo.getOwnerUserId() != newOwnerUserId) {
-            if (!memberIdList.contains(newOwnerUserId)) {
-                throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "队长必须在当前队伍中");
-            }
-        }
-//        - [ ] joinType 改为加密时，必须携带 joinKey
+        // joinType 改为加密时，必须携带 joinKey
         Integer joinType = teamUpdateRequest.getJoinType();
         if (joinType != null && getTeamTypeEnum(joinType) == TeamTypeEnum.SECRET) {
             if (StringUtils.isBlank(teamUpdateRequest.getJoinKey())) {
                 throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "加密队伍必须设置密钥");
             }
         }
-//        - [ ] status 只有管理员能更改
+        UserDTO loginUser = UserHelper.getUserDtoFromRequest(httpServletRequest);
+        final boolean isAdmin = UserHelper.isAdmin(loginUser);
+        // status 只有管理员能更改
         if (teamUpdateRequest.getStatus() != null) {
-            if (!idAdmin) {
+            if (!isAdmin) {
                 throw new BusinessException(Error.CLIENT_FORBIDDEN, "");
+            }
+        }
+        Team teamPo = this.getById(teamUpdateRequest.getId());
+        if (teamPo == null) {
+            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "队伍不存在");
+        }
+
+        // 除管理员外，只有owner可以修改
+        if (!isAdmin) {
+            if (teamPo.getOwnerUserId() != Optional.ofNullable(loginUser.getUserId()).orElse(-1L)) {
+                throw new BusinessException(Error.CLIENT_FORBIDDEN, "只有队长可以修改");
+            }
+        }
+
+        // ownerUsrId 必须在当前队伍
+        Long newOwnerUserId = teamUpdateRequest.getOwnerUserId();
+        if (newOwnerUserId != null && teamPo.getOwnerUserId() != newOwnerUserId) {
+            if (!convertMemberIdsToList(teamPo.getMemberIds()).contains(newOwnerUserId)) {
+                throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "队长必须在当前队伍中");
+            }
+        }
+
+        // maxNum [当前队员人数, max]
+        List<Long> updatedMemberIdList = teamUpdateRequest.getMemberIdList();
+        int memberNum = updatedMemberIdList == null ? 0 : updatedMemberIdList.size();
+        Integer updateRequestMaxNum = teamUpdateRequest.getMaxNum();
+        if (updateRequestMaxNum != null) {
+            if (updateRequestMaxNum < memberNum || updateRequestMaxNum > TeamConstant.TEAM_MEMBER_NUM_MAX) {
+                throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "队伍人数错误");
             }
         }
         String[] nullPropertyNames = BeanUtilsExtend.getNullPropertyNames(teamUpdateRequest);
         BeanUtils.copyProperties(teamUpdateRequest, teamPo, nullPropertyNames);
+
+        boolean isValid = validateMembers(updatedMemberIdList, loginUser, teamPo);
+        if (isValid) {
+            teamPo.setMemberIds(convertListToMemberIds(updatedMemberIdList));
+        } else {
+            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "队伍成员不合法");
+        }
+
         boolean isUpdate = this.updateById(teamPo);
         return ResponseUtils.success(isUpdate);
+    }
+
+    /**
+     * 校验 memberIdList 是否符合规则：当前登录的是队长，且队长只能删除用户，不能添加别的用户
+     * @param memberIdList
+     * @param loginUser
+     * @param teamPo
+     * @return 新的memberIdList是否可以更新到数据库
+     */
+    private static boolean validateMembers(List<Long> memberIdList, UserDTO loginUser, Team teamPo) {
+        if (memberIdList == null || memberIdList.isEmpty()) {
+            return false;
+        }
+        List<Long> curMemberIdList = convertMemberIdsToList(teamPo.getMemberIds());
+        boolean curIsOwner = Objects.equals(loginUser.getUserId(), teamPo.getOwnerUserId());
+        boolean hasOwner = memberIdList.contains(loginUser.getUserId());
+        boolean isMembersValid = true;
+        for (Long id : memberIdList) {
+            if (!curMemberIdList.contains(id)) {
+                isMembersValid = false;
+                break;
+            }
+        }
+        return curIsOwner && hasOwner && isMembersValid;
     }
 
     @NotNull
@@ -197,7 +265,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
     }
 
     @Override
-    public BaseResponse<Boolean> userJoinTeam(HttpServletRequest request, @NotNull Long teamId, UserJoinTeamRequest userJoinTeamRequest) {
+    public BaseResponse<Boolean> addUserInTeam(HttpServletRequest request, @NotNull Long teamId, UserJoinTeamRequest userJoinTeamRequest) {
         UserDTO loginUserDto = UserHelper.getUserDtoFromRequest(request);
         User userPo = userService.getById(loginUserDto.getUserId());
         if (userPo == null) {
@@ -244,7 +312,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
 
     @Override
     @Transactional(propagation = Propagation.REQUIRED, timeout = 3, rollbackFor = Exception.class)
-    public BaseResponse<Boolean> userExitTeam(HttpServletRequest request, Long teamId, Long exitUserId, UserExitTeamRequest userExitTeamRequest) {
+    public BaseResponse<Boolean> removeUserFromTeam(HttpServletRequest request, Long teamId, Long exitUserId, Long nextOwnerUserId) {
         if (teamId == null || teamId <= 0 || exitUserId == null || exitUserId <= 0) {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "");
         }
@@ -274,10 +342,10 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
         if (exitUserId == teamPo.getOwnerUserId()) {
             // 交接队长 or delete team
             if (memberIdList.size() > 1) {
-                if (userExitTeamRequest == null || !memberIdList.contains(userExitTeamRequest.getNextOwnerUserId())) {
+                if (nextOwnerUserId == null || !memberIdList.contains(nextOwnerUserId)) {
                     throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "新任队长不合法");
                 }
-                int rows1 = teamMapper.updateTeamOwner(teamPo.getId(), userExitTeamRequest.getNextOwnerUserId());
+                int rows1 = teamMapper.updateTeamOwner(teamPo.getId(), nextOwnerUserId);
                 int rows2 = deleteMember(exitUserId, teamPo.getId(), memberIdList);
                 result = rows1 > 0 && rows2 > 0;
             } else {

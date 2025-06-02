@@ -1,7 +1,6 @@
 package com.yupi.usercenter.model.dto
 
 import com.yupi.usercenter.model.Team
-import com.yupi.usercenter.model.enums.TeamTypeEnum
 import java.io.Serializable
 import java.util.*
 
@@ -17,7 +16,7 @@ data class TeamDTO(
         val description: String? = null,
         val maxNum: Int? = null,
         val ownerUserId: Long? = null,
-        val joinType: TeamTypeEnum? = null,
+        val joinType: Int? = null,
         val createDatetime: Date? = null,
         val members: List<UserDTO>? = null
 ) : Serializable {
@@ -28,7 +27,7 @@ data class TeamDTO(
             team.description,
             team.maxNum,
             team.ownerUserId,
-            TeamTypeEnum.fromValue(team.joinType),
+            team.joinType,
             team.createDatetime
     )
 
@@ -38,7 +37,7 @@ data class TeamDTO(
             team.description,
             team.maxNum,
             team.ownerUserId,
-            TeamTypeEnum.fromValue(team.joinType),
+            team.joinType,
             team.createDatetime,
             userDtoList
     )

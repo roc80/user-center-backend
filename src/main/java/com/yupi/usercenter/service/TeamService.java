@@ -6,9 +6,9 @@ import com.yupi.usercenter.model.base.BaseResponse;
 import com.yupi.usercenter.model.dto.TeamDTO;
 import com.yupi.usercenter.model.request.TeamCreateRequest;
 import com.yupi.usercenter.model.request.TeamUpdateRequest;
-import com.yupi.usercenter.model.request.UserExitTeamRequest;
 import com.yupi.usercenter.model.request.UserJoinTeamRequest;
 import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -22,7 +22,7 @@ public interface TeamService extends IService<Team> {
 
     BaseResponse<Boolean> createTeam(TeamCreateRequest request, @NonNull Long userId);
 
-    BaseResponse<List<TeamDTO>> retrieveTeams(HttpServletRequest request);
+    BaseResponse<List<TeamDTO>> retrieveTeams(boolean isAdmin);
 
     BaseResponse<List<TeamDTO>> retrieveTeamsByPage(HttpServletRequest request, int pageNum, int pageSize);
 
@@ -30,7 +30,13 @@ public interface TeamService extends IService<Team> {
 
     BaseResponse<Boolean> deleteTeam(HttpServletRequest request, Long teamId);
 
-    BaseResponse<Boolean> userJoinTeam(HttpServletRequest request, @NonNull Long teamId, UserJoinTeamRequest userJoinTeamRequest);
+    BaseResponse<Boolean> addUserInTeam(HttpServletRequest request, @NonNull Long teamId, UserJoinTeamRequest userJoinTeamRequest);
 
-    BaseResponse<Boolean> userExitTeam(HttpServletRequest request, Long teamId, Long userId, UserExitTeamRequest userExitTeamRequest);
+    BaseResponse<Boolean> removeUserFromTeam(HttpServletRequest request, Long teamId, Long userId, @Nullable Long nextOwnerUserId);
+
+    BaseResponse<List<TeamDTO>> retrieveTeamsOwnedByUser(Long userId);
+
+    BaseResponse<List<TeamDTO>> retrieveTeamsWhereUserIsMember(Long userId);
+
+    BaseResponse<TeamDTO> retrieveTeamById(Long id);
 }

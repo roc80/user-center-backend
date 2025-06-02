@@ -9,4 +9,5 @@ data class TeamUpdateRequest(
         val status: Int?,
         val joinType: Int?,
         val joinKey: String?,
+        val memberIdList: List<Long>? = null
 )

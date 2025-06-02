@@ -44,11 +44,10 @@
         WHERE id=#{teamId} AND is_delete = 0
     </update>
 
-    <select id="selectTeamsByOwnerUserId" resultType="java.lang.Integer">
-        SELECT COUNT(*) AS TOTAL
+    <select id="selectTeamsByOwnerUserId" resultType="com.yupi.usercenter.model.Team">
+        SELECT *
         FROM team
-        WHERE owner_user_id = #{ownerUserId}
-          AND is_delete = 0
+        WHERE owner_user_id = #{ownerUserId} AND is_delete = 0
     </select>
 
     <select id="selectAllTeam" parameterType="map" resultType="com.yupi.usercenter.model.Team">

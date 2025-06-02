@@ -53,6 +53,8 @@ public class GlobalAspect {
         String lockKeyName = RedisConstant.PROJECT_NAME + ":" + RedisConstant.MODULE_REDIS + ":lock";
         RLock rLock = redissonClient.getLock(lockKeyName);
         try {
+            // waitTime 指定为0，表示其他未能加锁成功的线程直接结束，在这里保证只有一个线程能获取到锁。
+            // leaseTime 指定为一个非正的长整型，启用WatchDog机制，自动续期。
             boolean hasAcquired = rLock.tryLock(0L, -1L, TimeUnit.MILLISECONDS);
             if (!hasAcquired) {
                 return null;

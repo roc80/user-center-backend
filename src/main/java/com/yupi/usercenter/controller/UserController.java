@@ -18,14 +18,6 @@ import java.util.Set;
 
 @RestController
 @RequestMapping("/user")
-@CrossOrigin(
-        origins = {"http://localhost:5173"},
-        allowCredentials = "true",
-        allowedHeaders = "*",
-        methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT,
-                RequestMethod.DELETE, RequestMethod.OPTIONS},
-        maxAge = 3600                      // 预检请求的有效期
-)
 public class UserController {
     @Resource
     private UserService userService;
@@ -66,8 +58,8 @@ public class UserController {
     }
 
     @GetMapping("/search/all")
-    public BaseResponse<List<UserDTO>> searchAllUser(HttpServletRequest request, int pageNum, int pageSize) {
-        if (pageNum <= 0 || pageSize <= 0) {
+    public BaseResponse<List<UserDTO>> searchAllUser(HttpServletRequest request, Integer pageNum, Integer pageSize) {
+        if (pageNum == null || pageNum <= 0 || pageSize == null || pageSize <= 0) {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "分页参数错误");
         }
         return userService.searchAllUser(request, pageNum, pageSize);
