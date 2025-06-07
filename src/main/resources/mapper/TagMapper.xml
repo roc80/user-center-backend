@@ -20,4 +20,76 @@
         parent_id,is_parent,create_datetime,
         update_datetime,is_delete
     </sql>
+
+    <!-- 检查标签名是否已存在 -->
+    <select id="checkTagNameExists" resultType="int">
+        SELECT COUNT(1)
+        FROM tag
+        WHERE tag_name = #{tagName}
+          AND user_id = #{userId}
+          AND is_delete = 0
+    </select>
+
+    <!-- 检查父标签是否存在且属于当前用户 -->
+    <select id="checkParentTagExists" resultType="int">
+        SELECT COUNT(1)
+        FROM tag
+        WHERE id = #{parentId}
+          AND user_id = #{userId}
+          AND is_delete = 0
+    </select>
+
+    <!-- 根据用户ID和父标签ID查询子标签 -->
+    <select id="findChildrenByParentId" resultType="com.yupi.usercenter.model.Tag">
+        SELECT id, tag_name, user_id, parent_id, is_parent, create_datetime, update_datetime
+        FROM tag
+        WHERE user_id = #{userId}
+          AND parent_id = #{parentId}
+          AND is_delete = 0
+        ORDER BY create_datetime ASC
+    </select>
+
+    <!-- 根据用户ID查询所有根标签 -->
+    <select id="findRootTagsByUserId" resultType="com.yupi.usercenter.model.Tag">
+        SELECT id, tag_name, user_id, parent_id, is_parent, create_datetime, update_datetime
+        FROM tag
+        WHERE user_id = #{userId}
+          AND parent_id = 0
+          AND is_delete = 0
+        ORDER BY create_datetime ASC
+    </select>
+
+    <!-- 更新父标签状态 -->
+    <update id="updateParentStatus">
+        UPDATE tag
+        SET is_parent = #{isParent},
+            update_datetime = NOW()
+        WHERE id = #{tagId}
+          AND is_delete = 0
+    </update>
+
+    <!-- 检查标签是否有子标签 -->
+    <select id="countChildrenByParentId" resultType="int">
+        SELECT COUNT(1)
+        FROM tag
+        WHERE parent_id = #{parentId}
+          AND is_delete = 0
+    </select>
+
+    <!-- 根据ID查询标签（包含父标签名称） -->
+    <select id="selectTagWithParentName" resultType="com.yupi.usercenter.model.response.TagResponse">
+        SELECT
+            t.id,
+            t.tag_name AS tagName,
+            t.user_id AS userId,
+            t.parent_id AS parentId,
+            t.is_parent AS isParent,
+            t.create_datetime AS createDatetime,
+            pt.tag_name AS parentTagName
+        FROM tag t
+                 LEFT JOIN tag pt ON t.parent_id = pt.id AND pt.is_delete = 0
+        WHERE t.id = #{tagId}
+          AND t.is_delete = 0
+    </select>
+
 </mapper>
