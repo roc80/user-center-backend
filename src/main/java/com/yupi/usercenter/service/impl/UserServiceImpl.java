@@ -4,7 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
+import com.yupi.usercenter.algorithm.EditDistance;
 import com.yupi.usercenter.constant.RedisConstant;
 import com.yupi.usercenter.constant.UserConstant;
 import com.yupi.usercenter.exception.BusinessException;
@@ -17,6 +19,7 @@ import com.yupi.usercenter.model.dto.UserDTO;
 import com.yupi.usercenter.model.helper.ModelHelper;
 import com.yupi.usercenter.service.UserService;
 import com.yupi.usercenter.utils.UserHelper;
+import com.yupi.usercenter.utils.aspect.RequiredLogin;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
@@ -31,9 +34,7 @@ import org.springframework.util.DigestUtils;
 import javax.servlet.http.HttpServletRequest;
 import java.lang.reflect.Type;
 import java.time.Duration;
-import java.util.Date;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -51,6 +52,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     @Autowired
     RedissonClient redissonClient;
+    @Autowired
+    UserMapper userMapper;
 
     private static final int USERNAME_MIN_LENGTH = 4;
     private static final int USERNAME_MAX_LENGTH = 256;
@@ -184,11 +187,37 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         }
     }
 
+    @RequiredLogin
     @Override
     public BaseResponse<List<UserDTO>> searchAllUser(HttpServletRequest request, int pageNum, int pageSize) {
-        UserHelper.getUserDtoFromRequest(request);
-        Page<User> userPage = this.page(new Page<>(pageNum, pageSize));
-        List<UserDTO> safetyUserList = userPage.getRecords().stream().map(ModelHelper.INSTANCE::convertUserToUserDto).collect(Collectors.toList());
+        Page<User> resultPage = null;
+        // 取缓存
+        String redisKeyName = String.format("%s:%s:pageNum=%d,pageSize=%d",
+                RedisConstant.PROJECT_NAME,
+                "all-user",
+                pageNum,
+                pageSize
+        );
+        RBucket<Page<User>> rBucket = redissonClient.getBucket(redisKeyName);
+        try {
+            resultPage = rBucket.get();
+            if (resultPage == null) {
+                log.info("key={},searchAllUser hit cache failed", redisKeyName);
+                // 没取到，查库
+                resultPage = this.page(new Page<>(pageNum, pageSize));
+                // 写缓存 TODO@lp 过期时间加offset,防止缓存雪崩。
+                rBucket.set(resultPage, Duration.ofHours(8));
+            } else {
+                log.info("key={}, searchAllUser hit cache succeed", redisKeyName);
+            }
+        } catch (RuntimeException e) {
+            log.error("key={}, searchAllUser write redis error", redisKeyName, e);
+        }
+        // 没走缓存
+        if (resultPage == null) {
+            resultPage = this.page(new Page<>(pageNum, pageSize));
+        }
+        List<UserDTO> safetyUserList = resultPage.getRecords().stream().map(ModelHelper.INSTANCE::convertUserToUserDto).collect(Collectors.toList());
         return ResponseUtils.success(safetyUserList);
     }
 
@@ -232,41 +261,93 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     @Override
     public BaseResponse<List<UserDTO>> recommendUsers(HttpServletRequest request, int pageNum, int pageSize) {
         UserDTO loginUser = UserHelper.getUserDtoFromRequest(request);
+        User userPo = this.getById(loginUser.getUserId());
+        if (userPo == null) {
+            throw new BusinessException(Error.CLIENT_NO_AUTH, "");
+        }
+        if (userPo.getTagJsonList() == null) {
+            return searchAllUser(request, pageNum, pageSize);
+        }
         Page<User> resultPage = null;
         // TODO@lp 哪些用户使用缓存
-        Long userId = loginUser.getUserId();
+        Long userId = userPo.getId();
         if (userId != null && userId < 100) {
             // 取缓存
-            String redisKeyName = String.format(RedisConstant.PROJECT_NAME + ":" + RedisConstant.MODULE_RECOMMEND + ":recommendUsers:%d", userId);
+            String redisKeyName = String.format(
+                    "%s:%s:userId=%d:pageNum=%d,pageSize=%d",
+                    RedisConstant.PROJECT_NAME,
+                    RedisConstant.MODULE_RECOMMEND,
+                    userId,
+                    pageNum,
+                    pageSize
+            );
             RBucket<Page<User>> rBucket = redissonClient.getBucket(redisKeyName);
             try {
                 resultPage = rBucket.get();
                 if (resultPage == null) {
-                    log.info("userId: " + userId + ", recommendUsers hit cache failed");
+                    log.info("key={}, recommendUsers hit cache failed", redisKeyName);
                     // 没取到，查库
-                    resultPage = this.page(new Page<>(pageNum, pageSize));
+                    resultPage = recommendUsersFromDB(userPo, pageNum, pageSize);
                     // 写缓存 TODO@lp 过期时间加offset,防止缓存雪崩。
                     rBucket.set(resultPage, Duration.ofHours(8));
                 } else {
-                    log.info("userId: " + userId + ", recommendUsers hit cache succeed");
+                    log.info("key={}, recommendUsers hit cache succeed", redisKeyName);
                 }
             } catch (RuntimeException e) {
-                log.error("recommendUsers write redis error", e);
+                log.error("key={}, recommendUsers write redis error", redisKeyName, e);
             }
         }
         // 没走缓存
         if (resultPage == null) {
-            resultPage = this.page(new Page<>(pageNum, pageSize));
+            resultPage = recommendUsersFromDB(userPo, pageNum, pageSize);
         }
         List<UserDTO> safetyUserList = resultPage.getRecords().stream().map(ModelHelper.INSTANCE::convertUserToUserDto).collect(Collectors.toList());
         return ResponseUtils.success(safetyUserList);
+    }
+
+    private Page<User> recommendUsersFromDB(User sourceUser, int pageNum, int pageSize) {
+        List<User> hasTagsUserList = userMapper.selectUsersHasTags();
+        List<String> sourceTagList = convertTagJsonToList(sourceUser.getTagJsonList());
+        PriorityQueue<User> maximumPriorityQueue = new PriorityQueue<>(pageSize, (user1, user2) -> {
+            List<String> user1TagList = convertTagJsonToList(user1.getTagJsonList());
+            List<String> user2TagList = convertTagJsonToList(user2.getTagJsonList());
+            int user1Distance = EditDistance.levenshteinDistance(sourceTagList, user1TagList);
+            int user2Distance = EditDistance.levenshteinDistance(sourceTagList, user2TagList);
+            // PriorityQueue默认是最小堆，这里需要得到前pageSize个编辑距离最小的元素，所以用最大堆。
+            return user2Distance - user1Distance;
+        });
+        for (User user : hasTagsUserList) {
+            if (Objects.equals(user.getId(), sourceUser.getId())) {
+                continue;
+            }
+            maximumPriorityQueue.offer(user);
+        }
+        LinkedList<User> strictlySortedUserList = new LinkedList<>();
+        while (!maximumPriorityQueue.isEmpty()) {
+            strictlySortedUserList.addFirst(maximumPriorityQueue.poll());
+        }
+        // userMapper.selectUsersHasTags 为了提升查询性能，并没有select *
+        List<User> resultUserList = strictlySortedUserList.stream().map(user -> this.getById(user.getId())).collect(Collectors.toList());
+        return new Page<User>(pageNum, pageSize).setRecords(resultUserList);
+    }
+
+    private List<String> convertTagJsonToList(@Nullable String tagJson) {
+        String nonNullTagJson = Optional.ofNullable(tagJson).orElse("");
+        List<String> result = new ArrayList<>();
+        try {
+            result = new Gson().fromJson(nonNullTagJson, new TypeToken<List<String>>() {
+            }.getType());
+        } catch (JsonSyntaxException e) {
+            log.error("parse tag json error", e);
+        }
+        return result;
     }
 
     /**
      * @param partialUser 前端更新用户信息后，传递的新用户对象。只有不为空的部分是需要写入数据库的。
      * @author lipeng
      * @since 2025/5/15 11:03
-    */
+     */
     private void updateUser(User originalUser, User partialUser) {
         if (originalUser == null || partialUser == null) {
             return;
@@ -303,9 +384,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     /**
      * 适合用户数量较少时，可以和和数据库查询搭配着查
+     *
      * @author lipeng
      * @since 2025/5/20 12:51
-    */
+     */
     private @NonNull List<User> searchUsersInMem(@NonNull List<String> tagNameList) {
         List<User> userList = this.list();
         return userList.stream().filter(user -> {

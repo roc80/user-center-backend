@@ -21,10 +21,19 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id,user_name,avatar_url,
+        id
+        ,user_name,avatar_url,
         user_password,gender,phone,
         email,create_datetime,update_datetime,
         is_valid,is_delete,user_role,
         tag_json_list
     </sql>
+
+    <select id="selectUsersHasTags" resultType="com.yupi.usercenter.model.User">
+        select id, tag_json_list
+        from user
+        where tag_json_list is not null
+          and trim(tag_json_list) &lt;&gt; ''
+          and is_delete = 0
+    </select>
 </mapper>
