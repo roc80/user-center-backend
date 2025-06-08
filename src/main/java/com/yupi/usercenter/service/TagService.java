@@ -3,9 +3,11 @@ package com.yupi.usercenter.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.yupi.usercenter.model.Tag;
 import com.yupi.usercenter.model.TagTreeNode;
+import com.yupi.usercenter.model.base.BaseResponse;
 import com.yupi.usercenter.model.request.CreateTagRequest;
 import com.yupi.usercenter.model.response.TagResponse;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import java.util.List;
 
@@ -16,11 +18,11 @@ import java.util.List;
 */
 public interface TagService extends IService<Tag> {
 
-    TagResponse createTag(@Valid CreateTagRequest request, Long userId);
+    BaseResponse<TagResponse> createTag(@Valid CreateTagRequest request, Long creatorUserId);
 
-    List<TagTreeNode> getUserTagTree(Long userId);
+    List<TagTreeNode> getUserTagTree();
 
-    TagResponse getTagById(Long tagId, Long userId);
+    TagResponse getTagById(Long tagId);
 
-    void deleteTag(Long tagId, Long userId);
+    BaseResponse<Boolean> deleteTag(Long tagId, HttpServletRequest request);
 }
