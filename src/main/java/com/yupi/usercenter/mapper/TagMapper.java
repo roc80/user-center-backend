@@ -22,9 +22,9 @@ public interface TagMapper extends BaseMapper<Tag> {
     int checkTagNameExists(@Param("tagName") String tagName);
 
     /**
-     * 检查父标签是否存在
+     * 根据父标签id查找标签
      */
-    int checkParentTagExists(@Param("parentId") Long parentId);
+    Long selectParentId(@Param("parentId") Long parentId);
 
     /**
      * 根据用户ID和父标签ID查询子标签

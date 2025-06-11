@@ -34,6 +34,7 @@ import org.springframework.util.DigestUtils;
 import javax.servlet.http.HttpServletRequest;
 import java.lang.reflect.Type;
 import java.time.Duration;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -379,7 +380,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         if (partialUser.getUserRole() != null) {
             originalUser.setUserRole(partialUser.getUserRole());
         }
-        originalUser.setCreateDatetime(new Date());
+        originalUser.setUpdateDatetime(new Date().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
     }
 
     /**

@@ -97,8 +97,14 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag>
         } else {
             // 子标签
             // 检查父标签是否存在
-            if (tagMapper.checkParentTagExists(parentId) == 0) {
+            Long fatherId = tagMapper.selectParentId(parentId);
+            if (fatherId == null) {
                 throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "父标签不存在");
+            }
+            // 业务暂定前端只展示一层嵌套，这里需要校验 parentId 必须是根标签
+            Long grandpaId = this.getById(fatherId).getParentId();
+            if (grandpaId != null && grandpaId > 0) {
+                throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "不允许创建三层及以上的标签");
             }
 
             // 子标签的is_parent可以是0或1
@@ -173,12 +179,11 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag>
         if (!UserHelper.isAdmin(UserHelper.getUserDtoFromRequest(request))) {
             throw new BusinessException(Error.CLIENT_FORBIDDEN, "管理员可以删除tag");
         }
-        // 检查标签是否存在
-        if (tagMapper.checkParentTagExists(tagId) == 0) {
+
+        if (this.getById(tagId) == null) {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "标签不存在");
         }
 
-        // 检查是否有子标签
         if (tagMapper.countChildrenByParentId(tagId) > 0) {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "该标签下还有子标签，无法删除");
         }

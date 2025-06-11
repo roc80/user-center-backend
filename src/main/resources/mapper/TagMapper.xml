@@ -30,9 +30,9 @@
           AND is_delete = 0
     </select>
 
-    <!-- 检查父标签是否存在且属于当前用户 -->
-    <select id="checkParentTagExists" resultType="int">
-        SELECT COUNT(1)
+    <!-- 根据父标签id查找标签 -->
+    <select id="selectParentId" resultType="long">
+        SELECT id
         FROM tag
         WHERE id = #{parentId}
           AND is_delete = 0

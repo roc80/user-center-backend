@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.annotation.TableId
 import com.baomidou.mybatisplus.annotation.TableLogic
 import com.baomidou.mybatisplus.annotation.TableName
 import java.io.Serializable
+import java.time.LocalDateTime
+import java.time.ZoneId
 import java.util.*
 
 /**
@@ -47,12 +49,12 @@ data class User(
         /**
          * 记录创建时间
          */
-        var createDatetime: Date? = null,
+        var createDatetime: LocalDateTime? = null,
 
         /**
          * 记录更新时间
          */
-        var updateDatetime: Date? = null,
+        var updateDatetime: LocalDateTime? = null,
 
         /**
          * 数据是否有效，0有效，1失效
@@ -79,7 +81,7 @@ data class User(
     constructor(userName: String, userPassword: String) : this() {
         this.userName = userName
         this.userPassword = userPassword
-        createDatetime = Date()
+        createDatetime = Date().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()
         isValid = 0
         isDelete = 0
         userRole = 0

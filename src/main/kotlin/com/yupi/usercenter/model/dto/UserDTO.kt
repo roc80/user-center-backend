@@ -1,8 +1,9 @@
 package com.yupi.usercenter.model.dto
 
+import com.fasterxml.jackson.annotation.JsonFormat
 import org.springframework.lang.Nullable
 import java.io.Serializable
-import java.util.*
+import java.time.LocalDateTime
 
 /**
  * @author lipeng
@@ -42,7 +43,8 @@ data class UserDTO(
          * 用户注册时间
          */
         @Nullable
-        var createDatetime: Date? = null,
+        @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
+        var createDatetime: LocalDateTime? = null,
 
         /**
          * 用户角色
