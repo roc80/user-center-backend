@@ -1,3 +1,6 @@
+my-config:
+  security:
+    salt: suARnTClqnWOx8
 logging:
   level:
     org.springframework: info

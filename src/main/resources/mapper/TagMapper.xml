@@ -99,7 +99,6 @@
     <update id="restoreTag">
         UPDATE tag
         SET user_id         = #{creatorUserId},
-            update_datetime = NOW(),
             is_delete       = 0
         WHERE is_delete = 1
           AND id = #{id}

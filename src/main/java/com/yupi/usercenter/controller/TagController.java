@@ -4,7 +4,7 @@ import com.yupi.usercenter.model.TagTreeNode;
 import com.yupi.usercenter.model.base.BaseResponse;
 import com.yupi.usercenter.model.base.ResponseUtils;
 import com.yupi.usercenter.model.dto.UserDTO;
-import com.yupi.usercenter.model.request.CreateTagRequest;
+import com.yupi.usercenter.model.request.TagCreateRequest;
 import com.yupi.usercenter.model.response.TagResponse;
 import com.yupi.usercenter.service.TagService;
 import com.yupi.usercenter.utils.UserHelper;
@@ -18,7 +18,7 @@ import java.util.List;
 
 /**
  * @author Claude Sonnet4
- * @description TODO
+ * @description
  * @since 2025/6/7 20:06
  */
 @RestController
@@ -36,7 +36,7 @@ public class TagController {
      */
     @PostMapping
     public BaseResponse<TagResponse> createTag(
-            @Valid @RequestBody CreateTagRequest createTagRequest,
+            @Valid @RequestBody TagCreateRequest createTagRequest,
             HttpServletRequest request
     ) {
         UserDTO userDTO = UserHelper.getUserDtoFromRequest(request);

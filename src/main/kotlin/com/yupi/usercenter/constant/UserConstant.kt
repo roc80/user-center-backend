@@ -13,4 +13,11 @@ object UserConstant {
     const val USER_STATE_INVALID = "invalid"
 
     const val USER_LOGIN_INFO = "user_login_info"
+
+    const val USER_PO_ROLE_ADMIN = 1
+    const val USER_PO_ROLE_DEFAULT = 0
+    const val USER_PO_GENDER_MAN = 0
+    const val USER_PO_GENDER_WOMAN = 1
+    const val USER_PO_STATE_NORMAL = 0
+    const val USER_PO_STATE_INVALID = 1
 }

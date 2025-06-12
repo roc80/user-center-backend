@@ -7,9 +7,7 @@ import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
-import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -63,12 +61,9 @@ public class ImportUsers {
         user.setGender(0);
         user.setPhone("111");
         user.setEmail("222");
-        user.setCreateDatetime(new Date().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
-        user.setUpdateDatetime(new Date().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
         user.setValid(0);
         user.setDelete(0);
         user.setUserRole(0);
-        user.setTagJsonList("");
         return user;
     }
 

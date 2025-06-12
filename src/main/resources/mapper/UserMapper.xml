@@ -17,7 +17,6 @@
         <result property="isValid" column="is_valid" jdbcType="TINYINT"/>
         <result property="isDelete" column="is_delete" jdbcType="TINYINT"/>
         <result property="userRole" column="user_role" jdbcType="INTEGER"/>
-        <result property="tagJsonList" column="tag_json_list" jdbcType="VARCHAR"/>
     </resultMap>
 
     <sql id="Base_Column_List">
@@ -25,15 +24,7 @@
         ,user_name,avatar_url,
         user_password,gender,phone,
         email,create_datetime,update_datetime,
-        is_valid,is_delete,user_role,
-        tag_json_list
+        is_valid,is_delete,user_role
     </sql>
 
-    <select id="selectUsersHasTags" resultType="com.yupi.usercenter.model.User">
-        select id, tag_json_list
-        from user
-        where tag_json_list is not null
-          and trim(tag_json_list) &lt;&gt; ''
-          and is_delete = 0
-    </select>
 </mapper>

@@ -3,7 +3,7 @@ package com.yupi.usercenter.model
 import com.baomidou.mybatisplus.annotation.*
 import com.yupi.usercenter.model.request.TeamCreateRequest
 import java.io.Serializable
-import java.util.*
+import java.time.LocalDateTime
 
 /**
  *
@@ -71,13 +71,13 @@ data class Team(
          * 创建时间
          */
         @TableField(value = "create_datetime")
-        var createDatetime: Date?,
+        var createDatetime: LocalDateTime?,
 
         /**
          * 更新时间
          */
         @TableField(value = "update_datetime")
-        var updateDatetime: Date?,
+        var updateDatetime: LocalDateTime?,
 
         /**
          * 逻辑删除，0未删除，1已删除
@@ -87,7 +87,7 @@ data class Team(
         var isDelete: Int?,
 
         /**
-         * 当前队伍成员的id, 英文逗号作分割符
+         * 当前队伍成员的id
          */
         @TableField(value = "member_ids")
         var memberIds: String,

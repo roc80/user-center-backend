@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yupi.usercenter.mapper.UserTagMapper">
+
+    <resultMap id="BaseResultMap" type="com.yupi.usercenter.model.UserTag">
+        <id property="userId" column="user_id"/>
+        <id property="tagId" column="tag_id"/>
+        <result property="createDatetime" column="create_datetime"/>
+        <result property="updateDatetime" column="update_datetime"/>
+        <result property="isDelete" column="is_delete"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        user_id
+        ,tag_id,create_datetime,update_datetime,is_delete
+    </sql>
+    <update id="logicDeleteByUniqueId">
+        update user_tag
+        set is_delete = 1
+        where is_delete = 0
+          and user_id = #{userId}
+          and tag_id = #{tagId}
+    </update>
+    <update id="restoreDeletedOneByUniqueId">
+        update user_tag
+        set is_delete = 0
+        where is_delete = 1
+          and user_id = #{userId}
+          and tag_id = #{tagId}
+    </update>
+    <select id="selectUserIdByTagIdList" resultType="java.lang.Long">
+        select user_id
+        from user_tag
+        where tag_id in
+        <foreach collection="tagIdList" item="tagId" open="(" close=")" separator=",">
+            #{tagId}
+        </foreach>
+        and is_delete = 0
+        group by user_id
+        having count(tag_id) = #{tagCount}
+    </select>
+    <select id="selectTagIdByUserId" resultType="java.lang.Long">
+        select tag_id
+        from user_tag
+        where user_id = #{userId}
+          and is_delete = 0
+    </select>
+    <select id="selectUserIdWithTags" resultType="java.lang.Long">
+        select ut.user_id
+        from user_tag as ut
+                 join user as u on ut.user_id = u.id
+                 join tag as t on ut.tag_id = t.id
+        where ut.is_delete = 0
+          and u.is_delete = 0
+          and t.is_delete = 0
+    </select>
+</mapper>

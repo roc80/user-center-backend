@@ -2,7 +2,7 @@ package com.yupi.usercenter.model.dto
 
 import com.yupi.usercenter.model.Team
 import java.io.Serializable
-import java.util.*
+import java.time.LocalDateTime
 
 /**
  * @see com.yupi.usercenter.model.Team
@@ -17,7 +17,7 @@ data class TeamDTO(
         val maxNum: Int? = null,
         val ownerUserId: Long? = null,
         val joinType: Int? = null,
-        val createDatetime: Date? = null,
+        val createDatetime: LocalDateTime? = null,
         val members: List<UserDTO>? = null
 ) : Serializable {
 

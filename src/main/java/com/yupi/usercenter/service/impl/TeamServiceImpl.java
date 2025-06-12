@@ -22,10 +22,8 @@ import com.yupi.usercenter.utils.UserHelper;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.servlet.http.HttpServletRequest;
@@ -36,17 +34,19 @@ import java.util.stream.Collectors;
 /**
  * @author lipeng
  * @description 针对表【team】的数据库操作Service实现
- * @createDate 2025-05-23 10:09:11
+ * @since 2025-05-23 10:09:11
  */
 @Service
 public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
         implements TeamService {
 
-    @Autowired
-    UserService userService;
+    private final UserService userService;
+    private final TeamMapper teamMapper;
 
-    @Autowired
-    TeamMapper teamMapper;
+    public TeamServiceImpl(UserService userService, TeamMapper teamMapper) {
+        this.userService = userService;
+        this.teamMapper = teamMapper;
+    }
 
     @Override
     public BaseResponse<Boolean> createTeam(TeamCreateRequest teamCreateRequest, @NotNull Long userId) {
@@ -212,9 +212,6 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
 
     /**
      * 校验 memberIdList 是否符合规则：当前登录的是队长，且队长只能删除用户，不能添加别的用户
-     * @param memberIdList
-     * @param loginUser
-     * @param teamPo
      * @return 新的memberIdList是否可以更新到数据库
      */
     private static boolean validateMembers(List<Long> memberIdList, UserDTO loginUser, Team teamPo) {
@@ -311,7 +308,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
     }
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRED, timeout = 3, rollbackFor = Exception.class)
+    @Transactional(timeout = 3, rollbackFor = Exception.class)
     public BaseResponse<Boolean> removeUserFromTeam(HttpServletRequest request, Long teamId, Long exitUserId, Long nextOwnerUserId) {
         if (teamId == null || teamId <= 0 || exitUserId == null || exitUserId <= 0) {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "");

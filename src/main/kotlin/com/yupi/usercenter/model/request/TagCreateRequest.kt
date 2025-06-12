@@ -6,7 +6,7 @@ import javax.validation.constraints.Min
 import javax.validation.constraints.NotBlank
 import javax.validation.constraints.NotNull
 
-data class CreateTagRequest(
+data class TagCreateRequest(
     @field:NotBlank(message = "标签名不能为空")
     @field:Length(max = 256, message = "标签名长度不能超过256个字符")
     val tagName: String? = null,

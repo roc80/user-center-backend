@@ -3,21 +3,23 @@ package com.yupi.usercenter.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.google.gson.Gson;
-import com.google.gson.JsonSyntaxException;
-import com.google.gson.reflect.TypeToken;
 import com.yupi.usercenter.algorithm.EditDistance;
+import com.yupi.usercenter.config.MyConfigProperty;
 import com.yupi.usercenter.constant.RedisConstant;
 import com.yupi.usercenter.constant.UserConstant;
 import com.yupi.usercenter.exception.BusinessException;
+import com.yupi.usercenter.mapper.TagMapper;
 import com.yupi.usercenter.mapper.UserMapper;
+import com.yupi.usercenter.model.Tag;
 import com.yupi.usercenter.model.User;
 import com.yupi.usercenter.model.base.BaseResponse;
 import com.yupi.usercenter.model.base.Error;
 import com.yupi.usercenter.model.base.ResponseUtils;
 import com.yupi.usercenter.model.dto.UserDTO;
 import com.yupi.usercenter.model.helper.ModelHelper;
+import com.yupi.usercenter.model.request.TagBindRequest;
 import com.yupi.usercenter.service.UserService;
+import com.yupi.usercenter.service.UserTagService;
 import com.yupi.usercenter.utils.UserHelper;
 import com.yupi.usercenter.utils.aspect.RequiredLogin;
 import lombok.extern.slf4j.Slf4j;
@@ -25,17 +27,18 @@ import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.redisson.api.RBucket;
 import org.redisson.api.RedissonClient;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.DigestUtils;
 
 import javax.servlet.http.HttpServletRequest;
-import java.lang.reflect.Type;
 import java.time.Duration;
-import java.time.ZoneId;
-import java.util.*;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Objects;
+import java.util.PriorityQueue;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -51,18 +54,22 @@ import java.util.stream.Collectors;
 public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         implements UserService {
 
-    @Autowired
-    RedissonClient redissonClient;
-    @Autowired
-    UserMapper userMapper;
-
     private static final int USERNAME_MIN_LENGTH = 4;
     private static final int USERNAME_MAX_LENGTH = 256;
     private static final int PASSWORD_MIN_LENGTH = 8;
     private static final int PASSWORD_MAX_LENGTH = 2048;
 
-    // TODO@lp 不能硬编码在类中
-    public static final String SUFFIX_SALT = "suARnTClqnWOx8";
+    private final RedissonClient redissonClient;
+    private final UserTagService userTagService;
+    private final MyConfigProperty myConfigProperty;
+    private final TagMapper tagMapper;
+
+    public UserServiceImpl(RedissonClient redissonClient, UserTagService userTagService, MyConfigProperty myConfigProperty, TagMapper tagMapper) {
+        this.redissonClient = redissonClient;
+        this.userTagService = userTagService;
+        this.myConfigProperty = myConfigProperty;
+        this.tagMapper = tagMapper;
+    }
 
     public BaseResponse<Long> userRegister(@NonNull String userName, @NonNull String userPassword, @NonNull String repeatPassword) {
         if (StringUtils.isAnyBlank(userName, userPassword, repeatPassword)) {
@@ -83,7 +90,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "该用户名已存在");
         }
         // 插入一个新用户，返回用户id
-        String userPasswordMd5 = DigestUtils.md5DigestAsHex((userPassword + SUFFIX_SALT).getBytes());
+        String userPasswordMd5 = DigestUtils.md5DigestAsHex((userPassword + myConfigProperty.getSecurity().getSalt()).getBytes());
         User newUser = new User(userName, userPasswordMd5);
         this.save(newUser);
         return ResponseUtils.success(newUser.getId());
@@ -124,7 +131,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         }
         // 密码校验
         String savedUserPasswordMD5 = savedUser.getUserPassword();
-        String needCheckPasswordMD5 = DigestUtils.md5DigestAsHex((userPassword + SUFFIX_SALT).getBytes());
+        String needCheckPasswordMD5 = DigestUtils.md5DigestAsHex((userPassword + myConfigProperty.getSecurity().getSalt()).getBytes());
         if (needCheckPasswordMD5.equals(savedUserPasswordMD5)) {
             UserDTO userDTO = ModelHelper.INSTANCE.convertUserToUserDto(savedUser);
             request.getSession().setAttribute(UserConstant.USER_LOGIN_INFO, userDTO);
@@ -152,6 +159,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
     @Override
+    @Transactional(timeout = 3, rollbackFor = Exception.class)
     public BaseResponse<Boolean> deleteUser(@NotNull Long userId, HttpServletRequest request) {
         if (!UserHelper.isAdmin(UserHelper.getUserDtoFromRequest(request))) {
             throw new BusinessException(Error.CLIENT_FORBIDDEN, "无权限删除用户");
@@ -228,12 +236,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
      * @since 2025/5/5 16:00
      */
     @Override
-    public @NonNull BaseResponse<Set<UserDTO>> searchUsersByTags(@Nullable List<String> tagNameList) {
-        if (tagNameList == null || tagNameList.isEmpty()) {
-            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "tags为空");
+    public @NonNull BaseResponse<List<UserDTO>> searchUsersByTags(List<Long> tagIdList) {
+        if (tagIdList == null || tagIdList.isEmpty()) {
+            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "tagIdList为空");
         }
-        List<User> matchedUserList = searchUsersInDB(tagNameList);
-        Set<UserDTO> users = matchedUserList.stream().map(ModelHelper.INSTANCE::convertUserToUserDto).collect(Collectors.toSet());
+        List<Long> filteredTagIdList = tagIdList.stream().filter(tagId -> tagMapper.selectById(tagId) != null).collect(Collectors.toList());
+        List<User> matchedUserList = userTagService.getUserList(filteredTagIdList);
+        List<UserDTO> users = matchedUserList.stream().map(ModelHelper.INSTANCE::convertUserToUserDto).collect(Collectors.toList());
         return ResponseUtils.success(users);
     }
 
@@ -245,12 +254,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         // 校验权限
         UserDTO loginUser = UserHelper.getUserDtoFromRequest(request);
         boolean isSameUser = userDTO.getUserId().equals(loginUser.getUserId());
-        if (!UserHelper.isAdmin(loginUser) && !isSameUser) {
+        boolean isAdmin = UserHelper.isAdmin(loginUser);
+        if (!isAdmin && !isSameUser) {
             throw new BusinessException(Error.CLIENT_NO_AUTH, "无权限修改");
         }
         User partialUser = ModelHelper.INSTANCE.convertUserDtoToUser(userDTO);
         User oldUser = this.getById(partialUser.getId());
-        updateUser(oldUser, partialUser);
+        doUpdate(oldUser, partialUser, isAdmin);
         boolean updated = this.updateById(oldUser);
         if (updated) {
             return ResponseUtils.success(0);
@@ -266,7 +276,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         if (userPo == null) {
             throw new BusinessException(Error.CLIENT_NO_AUTH, "");
         }
-        if (userPo.getTagJsonList() == null) {
+        if (userTagService.getTagList(userPo.getId()).isEmpty()) {
             return searchAllUser(request, pageNum, pageSize);
         }
         Page<User> resultPage = null;
@@ -306,42 +316,52 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         return ResponseUtils.success(safetyUserList);
     }
 
+    @Override
+    public BaseResponse<List<Tag>> getUserTags(HttpServletRequest request) {
+        UserDTO loginUser = UserHelper.getUserDtoFromRequest(request);
+        User loginUserPo = this.getById(loginUser.getUserId());
+        if (loginUserPo == null) {
+            throw new BusinessException(Error.CLIENT_OPERATION_DENIED, "用户不存在");
+        } else {
+            return ResponseUtils.success(userTagService.getTagList(loginUserPo.getId()));
+        }
+    }
+
+    @Override
+    public BaseResponse<Integer> updateTags(HttpServletRequest request, TagBindRequest tagBindRequest) {
+        User loginUser = this.getById(UserHelper.getUserDtoFromRequest(request).getUserId());
+        if (loginUser == null) {
+            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "用户不存在");
+        }
+        List<Long> tagIdList = tagBindRequest.getTagIdList();
+        List<Long> validTagIdList = tagIdList.stream().filter(tagId -> tagMapper.selectById(tagId) != null).collect(Collectors.toList());
+        Integer addedTags = userTagService.updateTagsOnUser(loginUser.getId(), validTagIdList);
+        return ResponseUtils.success(addedTags);
+    }
+
     private Page<User> recommendUsersFromDB(User sourceUser, int pageNum, int pageSize) {
-        List<User> hasTagsUserList = userMapper.selectUsersHasTags();
-        List<String> sourceTagList = convertTagJsonToList(sourceUser.getTagJsonList());
-        PriorityQueue<User> maximumPriorityQueue = new PriorityQueue<>(pageSize, (user1, user2) -> {
-            List<String> user1TagList = convertTagJsonToList(user1.getTagJsonList());
-            List<String> user2TagList = convertTagJsonToList(user2.getTagJsonList());
+        List<Long> hasTagUserIdList = userTagService.getAllUserWithTag();
+        List<String> sourceTagList = userTagService.getTagNameList(sourceUser.getId());
+        PriorityQueue<Long> maximumPriorityQueue = new PriorityQueue<>(pageSize, (userId1, userId2) -> {
+            List<String> user1TagList = userTagService.getTagNameList(userId1);
+            List<String> user2TagList = userTagService.getTagNameList(userId2);
             int user1Distance = EditDistance.levenshteinDistance(sourceTagList, user1TagList);
             int user2Distance = EditDistance.levenshteinDistance(sourceTagList, user2TagList);
             // PriorityQueue默认是最小堆，这里需要得到前pageSize个编辑距离最小的元素，所以用最大堆。
             return user2Distance - user1Distance;
         });
-        for (User user : hasTagsUserList) {
-            if (Objects.equals(user.getId(), sourceUser.getId())) {
+        for (Long userId : hasTagUserIdList) {
+            if (Objects.equals(userId, sourceUser.getId())) {
                 continue;
             }
-            maximumPriorityQueue.offer(user);
+            maximumPriorityQueue.offer(userId);
         }
         LinkedList<User> strictlySortedUserList = new LinkedList<>();
         while (!maximumPriorityQueue.isEmpty()) {
-            strictlySortedUserList.addFirst(maximumPriorityQueue.poll());
+            strictlySortedUserList.addFirst(this.getById(maximumPriorityQueue.poll()));
         }
-        // userMapper.selectUsersHasTags 为了提升查询性能，并没有select *
         List<User> resultUserList = strictlySortedUserList.stream().map(user -> this.getById(user.getId())).collect(Collectors.toList());
         return new Page<User>(pageNum, pageSize).setRecords(resultUserList);
-    }
-
-    private List<String> convertTagJsonToList(@Nullable String tagJson) {
-        String nonNullTagJson = Optional.ofNullable(tagJson).orElse("");
-        List<String> result = new ArrayList<>();
-        try {
-            result = new Gson().fromJson(nonNullTagJson, new TypeToken<List<String>>() {
-            }.getType());
-        } catch (JsonSyntaxException e) {
-            log.error("parse tag json error", e);
-        }
-        return result;
     }
 
     /**
@@ -349,7 +369,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
      * @author lipeng
      * @since 2025/5/15 11:03
      */
-    private void updateUser(User originalUser, User partialUser) {
+    private void doUpdate(User originalUser, User partialUser, boolean isAdmin) {
         if (originalUser == null || partialUser == null) {
             return;
         }
@@ -365,55 +385,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         if (partialUser.getPhone() != null) {
             originalUser.setPhone(partialUser.getPhone());
         }
-        if (partialUser.getEmail() != null) {
-            originalUser.setEmail(partialUser.getEmail());
-        }
-        if (partialUser.getEmail() != null) {
-            originalUser.setEmail(partialUser.getEmail());
-        }
-        if (partialUser.getTagJsonList() != null) {
-            originalUser.setTagJsonList(partialUser.getTagJsonList());
-        }
-        if (partialUser.isValid() != null) {
-            originalUser.setValid(partialUser.isValid());
-        }
-        if (partialUser.getUserRole() != null) {
-            originalUser.setUserRole(partialUser.getUserRole());
-        }
-        originalUser.setUpdateDatetime(new Date().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
-    }
-
-    /**
-     * 适合用户数量较少时，可以和和数据库查询搭配着查
-     *
-     * @author lipeng
-     * @since 2025/5/20 12:51
-     */
-    private @NonNull List<User> searchUsersInMem(@NonNull List<String> tagNameList) {
-        List<User> userList = this.list();
-        return userList.stream().filter(user -> {
-            String tagJsonStr = user.getTagJsonList();
-            if (tagJsonStr == null) {
-                return false;
+        if (isAdmin) {
+            if (partialUser.isValid() != null) {
+                originalUser.setValid(partialUser.isValid());
             }
-            Type type = new TypeToken<Set<String>>() {
-            }.getType();
-            Set<String> userTagNameSet = new Gson().fromJson(tagJsonStr, type);
-            for (String inputTagName : tagNameList) {
-                if (!userTagNameSet.contains(inputTagName)) {
-                    return false;
-                }
+            if (partialUser.getUserRole() != null) {
+                originalUser.setUserRole(partialUser.getUserRole());
             }
-            return true;
-        }).collect(Collectors.toList());
-    }
-
-    private @NonNull List<User> searchUsersInDB(@NonNull List<String> tagNameList) {
-        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
-        for (String tagName : tagNameList) {
-            queryWrapper = queryWrapper.like("tag_json_list", tagName);
         }
-        return this.list(queryWrapper);
     }
 
 }

@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.yupi.usercenter.model.Tag;
 import com.yupi.usercenter.model.TagTreeNode;
 import com.yupi.usercenter.model.base.BaseResponse;
-import com.yupi.usercenter.model.request.CreateTagRequest;
+import com.yupi.usercenter.model.request.TagCreateRequest;
 import com.yupi.usercenter.model.response.TagResponse;
 
 import javax.servlet.http.HttpServletRequest;
@@ -18,7 +18,7 @@ import java.util.List;
 */
 public interface TagService extends IService<Tag> {
 
-    BaseResponse<TagResponse> createTag(@Valid CreateTagRequest request, Long creatorUserId);
+    BaseResponse<TagResponse> createTag(@Valid TagCreateRequest request, Long creatorUserId);
 
     List<TagTreeNode> getUserTagTree();
 

@@ -57,12 +57,6 @@ data class UserDTO(
          */
         @Nullable
         var state: String? = null,
-
-        /**
-         * 用户标签-JSON列表
-         */
-        @Nullable
-        var tags: String? = null,
 ) : Serializable {
     companion object {
         private const val serialVersionUID = 1L

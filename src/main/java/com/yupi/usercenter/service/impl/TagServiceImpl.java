@@ -8,18 +8,16 @@ import com.yupi.usercenter.model.TagTreeNode;
 import com.yupi.usercenter.model.base.BaseResponse;
 import com.yupi.usercenter.model.base.Error;
 import com.yupi.usercenter.model.base.ResponseUtils;
-import com.yupi.usercenter.model.request.CreateTagRequest;
+import com.yupi.usercenter.model.request.TagCreateRequest;
 import com.yupi.usercenter.model.response.TagResponse;
 import com.yupi.usercenter.service.TagService;
 import com.yupi.usercenter.utils.UserHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -43,8 +41,8 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag>
     /**
      * 创建标签
      */
-    @Transactional(propagation = Propagation.REQUIRED, timeout = 3, rollbackFor = Exception.class)
-    public BaseResponse<TagResponse> createTag(CreateTagRequest request, Long creatorUserId) {
+    @Transactional(timeout = 3, rollbackFor = Exception.class)
+    public BaseResponse<TagResponse> createTag(TagCreateRequest request, Long creatorUserId) {
         // 查看已删除的标签，走数据复用流程
         Long tagId = tagMapper.selectDeletedTagIdByName(request.getTagName());
         if (tagId != null) {
@@ -65,8 +63,6 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag>
             tag.setUserId(creatorUserId);
             tag.setParentId(request.getParentId());
             tag.setParent(request.isParent());
-            tag.setCreateDatetime(new Date());
-            tag.setUpdateDatetime(new Date());
             tag.setDelete(0);
 
             int inserted = tagMapper.insert(tag);
@@ -85,7 +81,7 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag>
     /**
      * 验证父标签逻辑
      */
-    private void validateParentTag(CreateTagRequest request) {
+    private void validateParentTag(TagCreateRequest request) {
         Long parentId = request.getParentId();
         Integer isParent = request.isParent();
 
@@ -175,6 +171,7 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag>
     /**
      * 删除标签（逻辑删除）
      */
+    @Transactional(timeout = 3, rollbackFor = Exception.class)
     public BaseResponse<Boolean> deleteTag(Long tagId, HttpServletRequest request) {
         if (!UserHelper.isAdmin(UserHelper.getUserDtoFromRequest(request))) {
             throw new BusinessException(Error.CLIENT_FORBIDDEN, "管理员可以删除tag");
@@ -189,11 +186,7 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag>
         }
 
         // 执行逻辑删除
-        Tag tag = new Tag();
-        tag.setId(tagId);
-        tag.setDelete(1);
-        tag.setUpdateDatetime(new Date());
-        boolean isDeleted = this.removeById(tag);
+        boolean isDeleted = this.removeById(tagId);
         if (isDeleted) {
             return ResponseUtils.success(true);
         } else {

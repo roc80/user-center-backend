@@ -2,7 +2,7 @@ package com.yupi.usercenter.model
 
 import com.baomidou.mybatisplus.annotation.*
 import java.io.Serializable
-import java.util.*
+import java.time.LocalDateTime
 
 /**
  * 用户中心 标签表
@@ -40,12 +40,12 @@ data class Tag(
         /**
          * 记录创建时间
          */
-        var createDatetime: Date? = null,
+        var createDatetime: LocalDateTime? = null,
 
         /**
          * 记录更新时间
          */
-        var updateDatetime: Date? = null,
+        var updateDatetime: LocalDateTime? = null,
 
         /**
          * 数据是否逻辑删除，0未删除 1已删除

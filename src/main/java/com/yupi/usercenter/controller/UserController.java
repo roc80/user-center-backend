@@ -1,9 +1,11 @@
 package com.yupi.usercenter.controller;
 
 import com.yupi.usercenter.exception.BusinessException;
+import com.yupi.usercenter.model.Tag;
 import com.yupi.usercenter.model.base.BaseResponse;
 import com.yupi.usercenter.model.base.Error;
 import com.yupi.usercenter.model.dto.UserDTO;
+import com.yupi.usercenter.model.request.TagBindRequest;
 import com.yupi.usercenter.model.request.UserDeleteRequest;
 import com.yupi.usercenter.model.request.UserLoginRequest;
 import com.yupi.usercenter.model.request.UserRegisterRequest;
@@ -14,7 +16,6 @@ import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
-import java.util.Set;
 
 @RestController
 @RequestMapping("/user")
@@ -24,17 +25,11 @@ public class UserController {
 
     @PostMapping("/register")
     public BaseResponse<Long> userRegister(@RequestBody UserRegisterRequest userRegisterRequest) {
-        if (userRegisterRequest == null) {
-            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "请求体为空");
-        }
         return userService.userRegister(userRegisterRequest.getUsername(), userRegisterRequest.getPassword(), userRegisterRequest.getRepeatPassword());
     }
 
     @PostMapping("/login")
     public BaseResponse<UserDTO> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request) {
-        if (userLoginRequest == null) {
-            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "请求体为空");
-        }
         return userService.userLogin(userLoginRequest.getUsername(), userLoginRequest.getPassword(), request);
     }
 
@@ -66,11 +61,11 @@ public class UserController {
     }
 
     @GetMapping("/search/tags")
-    public BaseResponse<Set<UserDTO>> searchUsersByTags(@RequestParam(required = false) List<String> tagNameList) {
-        if (tagNameList == null || tagNameList.isEmpty()) {
-            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "Tags不能为空");
+    public BaseResponse<List<UserDTO>> searchUsersByTags(@RequestParam("tagIds") List<Long> tagIdList) {
+        if (tagIdList == null || tagIdList.isEmpty()) {
+            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "TagId不能为空");
         }
-        return userService.searchUsersByTags(tagNameList);
+        return userService.searchUsersByTags(tagIdList);
     }
 
     @PostMapping("/delete")
@@ -96,5 +91,18 @@ public class UserController {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "分页参数错误");
         }
         return userService.recommendUsers(request, pageNum, pageSize);
+    }
+
+    @GetMapping("/tags")
+    public BaseResponse<List<Tag>> getUserTags(HttpServletRequest request) {
+        return userService.getUserTags(request);
+    }
+
+     /**
+      * @return tagIdList有几个已经添加到当前用户了
+      */
+    @PostMapping("tags")
+    public BaseResponse<Integer> updateTags(HttpServletRequest request, @RequestBody TagBindRequest tagBindRequest) {
+        return userService.updateTags(request, tagBindRequest);
     }
 }
