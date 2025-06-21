@@ -40,17 +40,16 @@
 
     <!-- 根据用户ID和父标签ID查询子标签 -->
     <select id="findChildrenByParentId" resultType="com.yupi.usercenter.model.Tag">
-        SELECT id, tag_name, user_id, parent_id, is_parent, create_datetime, update_datetime
+        SELECT id, tag_name, user_id, parent_id, is_parent, create_datetime, update_datetime, is_delete
         FROM tag
-        WHERE user_id = #{userId}
-          AND parent_id = #{parentId}
+        WHERE parent_id = #{parentId}
           AND is_delete = 0
         ORDER BY create_datetime ASC
     </select>
 
     <!-- 根据用户ID查询所有根标签 -->
     <select id="findRootTags" resultType="com.yupi.usercenter.model.Tag">
-        SELECT id, tag_name, user_id, parent_id, is_parent, create_datetime, update_datetime
+        SELECT id, tag_name, user_id, parent_id, is_parent, create_datetime, update_datetime, is_delete
         FROM tag
         WHERE parent_id = 0
           AND is_delete = 0

@@ -3,6 +3,7 @@ package com.yupi.usercenter.controller;
 import com.yupi.usercenter.model.TagTreeNode;
 import com.yupi.usercenter.model.base.BaseResponse;
 import com.yupi.usercenter.model.base.ResponseUtils;
+import com.yupi.usercenter.model.dto.TagDTO;
 import com.yupi.usercenter.model.dto.UserDTO;
 import com.yupi.usercenter.model.request.TagCreateRequest;
 import com.yupi.usercenter.model.response.TagResponse;
@@ -34,8 +35,8 @@ public class TagController {
     /**
      * 创建标签
      */
-    @PostMapping
-    public BaseResponse<TagResponse> createTag(
+    @PostMapping("/")
+    public BaseResponse<TagDTO> createTag(
             @Valid @RequestBody TagCreateRequest createTagRequest,
             HttpServletRequest request
     ) {

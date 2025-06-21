@@ -8,6 +8,7 @@ import com.yupi.usercenter.model.TagTreeNode;
 import com.yupi.usercenter.model.base.BaseResponse;
 import com.yupi.usercenter.model.base.Error;
 import com.yupi.usercenter.model.base.ResponseUtils;
+import com.yupi.usercenter.model.dto.TagDTO;
 import com.yupi.usercenter.model.request.TagCreateRequest;
 import com.yupi.usercenter.model.response.TagResponse;
 import com.yupi.usercenter.service.TagService;
@@ -42,14 +43,12 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag>
      * 创建标签
      */
     @Transactional(timeout = 3, rollbackFor = Exception.class)
-    public BaseResponse<TagResponse> createTag(TagCreateRequest request, Long creatorUserId) {
+    public BaseResponse<TagDTO> createTag(TagCreateRequest request, Long creatorUserId) {
         // 查看已删除的标签，走数据复用流程
-        Long tagId = tagMapper.selectDeletedTagIdByName(request.getTagName());
-        if (tagId != null) {
-            // 恢复这条 tag
-            tagMapper.restoreTag(tagId, creatorUserId);
-            TagResponse tagResponse = tagMapper.selectTagWithParentName(tagId);
-            return ResponseUtils.success(tagResponse);
+        Long deletedTagId = tagMapper.selectDeletedTagIdByName(request.getTagName());
+        if (deletedTagId != null) {
+            tagMapper.restoreTag(deletedTagId, creatorUserId);
+            return ResponseUtils.success(new TagDTO(this.getById(deletedTagId)));
         } else {
             // 验证标签名是否重复
             if (tagMapper.checkTagNameExists(request.getTagName()) > 0) {
@@ -58,23 +57,28 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag>
 
             validateParentTag(request);
 
-            Tag tag = new Tag();
-            tag.setTagName(request.getTagName());
-            tag.setUserId(creatorUserId);
-            tag.setParentId(request.getParentId());
-            tag.setParent(request.isParent());
-            tag.setDelete(0);
+            Tag tag = new Tag(null,
+                    request.getTagName(),
+                    creatorUserId,
+                    request.getParentId(),
+                    request.isParent(),
+                    null,
+                    null,
+                    null
+            );
 
             int inserted = tagMapper.insert(tag);
             log.info("插入Tag: {}, {}", tag.getTagName(), (inserted == 1 ? "插入成功" : "插入失败"));
 
             // 如果创建的是子标签，需要更新父标签的 is_parent 状态
-            if (request.getParentId() != null && request.getParentId() > 0) {
+            if (request.getParentId() > 0) {
                 updateParentTagStatus(request.getParentId());
             }
-
-            TagResponse tagResponse = tagMapper.selectTagWithParentName(tag.getId());
-            return ResponseUtils.success(tagResponse);
+            if (inserted == 1) {
+                return ResponseUtils.success(new TagDTO(this.getById(tag.getId())));
+            } else {
+                throw new BusinessException(Error.SERVER_ERROR, "插入Tag失败");
+            }
         }
     }
 
@@ -82,12 +86,12 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag>
      * 验证父标签逻辑
      */
     private void validateParentTag(TagCreateRequest request) {
-        Long parentId = request.getParentId();
-        Integer isParent = request.isParent();
+        long parentId = request.getParentId();
+        int isParent = request.isParent();
 
-        if (parentId == null || parentId == 0) {
+        if (parentId == 0) {
             // 根标签或独立标签
-            if (isParent == null || (isParent != 0 && isParent != 1)) {
+            if (isParent != 0 && isParent != 1) {
                 throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "根标签的is_parent必须为0或1");
             }
         } else {
@@ -98,13 +102,13 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag>
                 throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "父标签不存在");
             }
             // 业务暂定前端只展示一层嵌套，这里需要校验 parentId 必须是根标签
-            Long grandpaId = this.getById(fatherId).getParentId();
-            if (grandpaId != null && grandpaId > 0) {
+            long grandpaId = this.getById(fatherId).getParentId();
+            if (grandpaId > 0) {
                 throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "不允许创建三层及以上的标签");
             }
 
             // 子标签的is_parent可以是0或1
-            if (isParent == null || (isParent != 0 && isParent != 1)) {
+            if (isParent != 0 && isParent != 1) {
                 throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "子标签的is_parent必须为0或1");
             }
         }
@@ -145,8 +149,8 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag>
                 null
         );
 
-        if (new Integer(1).equals(tag.isParent())) {
-            List<Tag> children = tagMapper.findChildrenByParentId(tag.getUserId(), tag.getId());
+        if (tag.isParent() == 1) {
+            List<Tag> children = tagMapper.findChildrenByParentId(tag.getId());
             List<TagTreeNode> childNodes = children.stream()
                     .map(this::buildTagTree)
                     .collect(Collectors.toList());

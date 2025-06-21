@@ -1,9 +1,9 @@
 package com.yupi.usercenter.controller;
 
 import com.yupi.usercenter.exception.BusinessException;
-import com.yupi.usercenter.model.Tag;
 import com.yupi.usercenter.model.base.BaseResponse;
 import com.yupi.usercenter.model.base.Error;
+import com.yupi.usercenter.model.dto.TagDTO;
 import com.yupi.usercenter.model.dto.UserDTO;
 import com.yupi.usercenter.model.request.TagBindRequest;
 import com.yupi.usercenter.model.request.UserDeleteRequest;
@@ -61,7 +61,7 @@ public class UserController {
     }
 
     @GetMapping("/search/tags")
-    public BaseResponse<List<UserDTO>> searchUsersByTags(@RequestParam("tagIds") List<Long> tagIdList) {
+    public BaseResponse<List<UserDTO>> searchUserByTagIds(@RequestParam("tagIds") List<Long> tagIdList) {
         if (tagIdList == null || tagIdList.isEmpty()) {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "TagId不能为空");
         }
@@ -93,15 +93,15 @@ public class UserController {
         return userService.recommendUsers(request, pageNum, pageSize);
     }
 
-    @GetMapping("/tags")
-    public BaseResponse<List<Tag>> getUserTags(HttpServletRequest request) {
-        return userService.getUserTags(request);
+    @GetMapping("/{userId}/tags")
+    public BaseResponse<List<TagDTO>> getUserTags(@PathVariable Long userId) {
+        return userService.getUserTags(userId);
     }
 
      /**
       * @return tagIdList有几个已经添加到当前用户了
       */
-    @PostMapping("tags")
+    @PostMapping("/my/tags")
     public BaseResponse<Integer> updateTags(HttpServletRequest request, @RequestBody TagBindRequest tagBindRequest) {
         return userService.updateTags(request, tagBindRequest);
     }

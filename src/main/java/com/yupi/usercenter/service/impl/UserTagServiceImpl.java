@@ -73,7 +73,7 @@ public class UserTagServiceImpl extends ServiceImpl<UserTagMapper, UserTag>
     public Integer updateTagsOnUser(Long userId, List<Long> newTagIdList) {
         // TODO@lp 多次更新，状态可能异常，加锁
         int result = 0;
-        if (userId == null || newTagIdList == null || newTagIdList.isEmpty()) {
+        if (userId == null || newTagIdList == null) {
             return result;
         }
         List<Long> oldTagIdList = getTagList(userId).stream().map(Tag::getId).collect(Collectors.toList());

@@ -1,9 +1,9 @@
 package com.yupi.usercenter.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.yupi.usercenter.model.Tag;
 import com.yupi.usercenter.model.User;
 import com.yupi.usercenter.model.base.BaseResponse;
+import com.yupi.usercenter.model.dto.TagDTO;
 import com.yupi.usercenter.model.dto.UserDTO;
 import com.yupi.usercenter.model.request.TagBindRequest;
 import org.springframework.lang.NonNull;
@@ -46,7 +46,7 @@ public interface UserService extends IService<User> {
 
     BaseResponse<List<UserDTO>> recommendUsers(HttpServletRequest request, int pageNum, int pageSize);
 
-    BaseResponse<List<Tag>> getUserTags(HttpServletRequest request);
+    BaseResponse<List<TagDTO>> getUserTags(Long userId);
 
      /**
       *

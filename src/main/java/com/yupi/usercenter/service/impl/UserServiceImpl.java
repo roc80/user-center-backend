@@ -15,6 +15,7 @@ import com.yupi.usercenter.model.User;
 import com.yupi.usercenter.model.base.BaseResponse;
 import com.yupi.usercenter.model.base.Error;
 import com.yupi.usercenter.model.base.ResponseUtils;
+import com.yupi.usercenter.model.dto.TagDTO;
 import com.yupi.usercenter.model.dto.UserDTO;
 import com.yupi.usercenter.model.helper.ModelHelper;
 import com.yupi.usercenter.model.request.TagBindRequest;
@@ -317,14 +318,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
     @Override
-    public BaseResponse<List<Tag>> getUserTags(HttpServletRequest request) {
-        UserDTO loginUser = UserHelper.getUserDtoFromRequest(request);
-        User loginUserPo = this.getById(loginUser.getUserId());
-        if (loginUserPo == null) {
-            throw new BusinessException(Error.CLIENT_OPERATION_DENIED, "用户不存在");
-        } else {
-            return ResponseUtils.success(userTagService.getTagList(loginUserPo.getId()));
-        }
+    public BaseResponse<List<TagDTO>> getUserTags(Long userId) {
+        List<Tag> tagList = userTagService.getTagList(userId);
+        List<TagDTO> tagDTOList = tagList.stream().filter(tag -> tag.isParent() == 0).map(TagDTO::new).collect(Collectors.toList());
+        return ResponseUtils.success(tagDTOList);
     }
 
     @Override

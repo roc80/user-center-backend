@@ -29,7 +29,7 @@ public interface TagMapper extends BaseMapper<Tag> {
     /**
      * 根据用户ID和父标签ID查询子标签
      */
-    List<Tag> findChildrenByParentId(@Param("userId") Long userId, @Param("parentId") Long parentId);
+    List<Tag> findChildrenByParentId(@Param("parentId") Long parentId);
 
     /**
      * 根据用户ID查询所有根标签
