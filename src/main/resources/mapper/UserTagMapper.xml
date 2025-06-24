@@ -48,7 +48,7 @@
           and is_delete = 0
     </select>
     <select id="selectUserIdWithTags" resultType="java.lang.Long">
-        select ut.user_id
+        select distinct (ut.user_id)
         from user_tag as ut
                  join user as u on ut.user_id = u.id
                  join tag as t on ut.tag_id = t.id

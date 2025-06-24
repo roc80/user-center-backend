@@ -1,6 +1,7 @@
 package com.yupi.usercenter.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.yupi.usercenter.constant.RedisConstant;
 import com.yupi.usercenter.exception.BusinessException;
 import com.yupi.usercenter.mapper.TagMapper;
 import com.yupi.usercenter.mapper.UserMapper;
@@ -10,12 +11,14 @@ import com.yupi.usercenter.model.User;
 import com.yupi.usercenter.model.UserTag;
 import com.yupi.usercenter.model.base.Error;
 import com.yupi.usercenter.service.UserTagService;
+import com.yupi.usercenter.utils.aspect.RedissonTryLock;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -68,27 +71,34 @@ public class UserTagServiceImpl extends ServiceImpl<UserTagMapper, UserTag>
         return getTagList(userId).stream().map(Tag::getTagName).collect(Collectors.toList());
     }
 
+
     @Override
     @Transactional(timeout = 3, rollbackFor = Exception.class)
+    @RedissonTryLock(
+            key = RedisConstant.PROJECT_NAME + ":" + RedisConstant.MODULE_LOCK + ":" + "updateTagsOnUser" + ":" + "#{#userId}",
+            waitTime = 5L,
+            leaseTime = -1L,
+            timeUnit = TimeUnit.SECONDS
+    )
     public Integer updateTagsOnUser(Long userId, List<Long> newTagIdList) {
-        // TODO@lp 多次更新，状态可能异常，加锁
-        int result = 0;
         if (userId == null || newTagIdList == null) {
-            return result;
+            return null;
         }
         List<Long> oldTagIdList = getTagList(userId).stream().map(Tag::getId).collect(Collectors.toList());
         for (Long tagId : oldTagIdList) {
             if (!newTagIdList.contains(tagId)) {
                 userTagMapper.logicDeleteByUniqueId(userId, tagId);
-            } else {
-                result++;
             }
         }
+        int result = 0;
+        // 为user添加tag
         for (Long tagId : newTagIdList) {
             if (!oldTagIdList.contains(tagId)) {
                 if (addUserTag(userId, tagId) == 1) {
                     result++;
                 }
+            } else {
+                result++;
             }
         }
         return result;

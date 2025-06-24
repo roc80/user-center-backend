@@ -35,7 +35,7 @@ public interface UserTagService extends IService<UserTag> {
 
      /**
       *
-      * @return newTagIdList中有几个和userId已经绑定
+      * @return newTagIdList中 添加到userId的tag数量
       */
     Integer updateTagsOnUser(Long userId, List<Long> newTagIdList);
 

@@ -5,7 +5,6 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.yupi.usercenter.algorithm.EditDistance;
 import com.yupi.usercenter.config.MyConfigProperty;
-import com.yupi.usercenter.constant.RedisConstant;
 import com.yupi.usercenter.constant.UserConstant;
 import com.yupi.usercenter.exception.BusinessException;
 import com.yupi.usercenter.mapper.TagMapper;
@@ -19,6 +18,8 @@ import com.yupi.usercenter.model.dto.TagDTO;
 import com.yupi.usercenter.model.dto.UserDTO;
 import com.yupi.usercenter.model.helper.ModelHelper;
 import com.yupi.usercenter.model.request.TagBindRequest;
+import com.yupi.usercenter.service.CacheKeyBuilder;
+import com.yupi.usercenter.service.CacheService;
 import com.yupi.usercenter.service.UserService;
 import com.yupi.usercenter.service.UserTagService;
 import com.yupi.usercenter.utils.UserHelper;
@@ -26,8 +27,6 @@ import com.yupi.usercenter.utils.aspect.RequiredLogin;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
-import org.redisson.api.RBucket;
-import org.redisson.api.RedissonClient;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
@@ -35,11 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.DigestUtils;
 
 import javax.servlet.http.HttpServletRequest;
-import java.time.Duration;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Objects;
-import java.util.PriorityQueue;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -60,13 +55,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     private static final int PASSWORD_MIN_LENGTH = 8;
     private static final int PASSWORD_MAX_LENGTH = 2048;
 
-    private final RedissonClient redissonClient;
+    private final CacheService cacheService;
+    private final CacheKeyBuilder cacheKeyBuilder;
     private final UserTagService userTagService;
     private final MyConfigProperty myConfigProperty;
     private final TagMapper tagMapper;
 
-    public UserServiceImpl(RedissonClient redissonClient, UserTagService userTagService, MyConfigProperty myConfigProperty, TagMapper tagMapper) {
-        this.redissonClient = redissonClient;
+    public UserServiceImpl(CacheService cacheService, CacheKeyBuilder cacheKeyBuilder, UserTagService userTagService, MyConfigProperty myConfigProperty, TagMapper tagMapper) {
+        this.cacheService = cacheService;
+        this.cacheKeyBuilder = cacheKeyBuilder;
         this.userTagService = userTagService;
         this.myConfigProperty = myConfigProperty;
         this.tagMapper = tagMapper;
@@ -190,45 +187,33 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     @Override
     public BaseResponse<UserDTO> searchUserByUserId(@NotNull Long userId) {
         User user = this.getById(userId);
-        if (user != null) {
-            return ResponseUtils.success(ModelHelper.INSTANCE.convertUserToUserDto(user));
-        } else {
-            return ResponseUtils.error(Error.CLIENT_PARAMS_ERROR);
+        if (user == null) {
+            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "");
         }
+        return ResponseUtils.success(ModelHelper.INSTANCE.convertUserToUserDto(user));
     }
 
     @RequiredLogin
     @Override
     public BaseResponse<List<UserDTO>> searchAllUser(HttpServletRequest request, int pageNum, int pageSize) {
-        Page<User> resultPage = null;
-        // 取缓存
-        String redisKeyName = String.format("%s:%s:pageNum=%d,pageSize=%d",
-                RedisConstant.PROJECT_NAME,
-                "all-user",
-                pageNum,
-                pageSize
+        List<UserDTO> userDTOList = cacheService.getWithCache(
+                cacheKeyBuilder.buildUserSearchKey(pageNum, pageSize),
+                () -> getUsersFromDB(pageNum, pageSize),
+                CacheService.DEFAULT_CACHE_DURATION
         );
-        RBucket<Page<User>> rBucket = redissonClient.getBucket(redisKeyName);
+        return ResponseUtils.success(userDTOList);
+    }
+
+    public List<UserDTO> getUsersFromDB(int pageNum, int pageSize) {
         try {
-            resultPage = rBucket.get();
-            if (resultPage == null) {
-                log.info("key={},searchAllUser hit cache failed", redisKeyName);
-                // 没取到，查库
-                resultPage = this.page(new Page<>(pageNum, pageSize));
-                // 写缓存 TODO@lp 过期时间加offset,防止缓存雪崩。
-                rBucket.set(resultPage, Duration.ofHours(8));
-            } else {
-                log.info("key={}, searchAllUser hit cache succeed", redisKeyName);
-            }
-        } catch (RuntimeException e) {
-            log.error("key={}, searchAllUser write redis error", redisKeyName, e);
+            Page<User> resultPage = this.page(new Page<>(pageNum, pageSize));
+            return resultPage.getRecords().stream()
+                    .map(ModelHelper.INSTANCE::convertUserToUserDto)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("Failed to query users from database, pageNum: {}, pageSize: {}", pageNum, pageSize, e);
+            return Collections.emptyList();
         }
-        // 没走缓存
-        if (resultPage == null) {
-            resultPage = this.page(new Page<>(pageNum, pageSize));
-        }
-        List<UserDTO> safetyUserList = resultPage.getRecords().stream().map(ModelHelper.INSTANCE::convertUserToUserDto).collect(Collectors.toList());
-        return ResponseUtils.success(safetyUserList);
     }
 
     /**
@@ -270,97 +255,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         }
     }
 
-    @Override
-    public BaseResponse<List<UserDTO>> recommendUsers(HttpServletRequest request, int pageNum, int pageSize) {
-        UserDTO loginUser = UserHelper.getUserDtoFromRequest(request);
-        User userPo = this.getById(loginUser.getUserId());
-        if (userPo == null) {
-            throw new BusinessException(Error.CLIENT_NO_AUTH, "");
-        }
-        if (userTagService.getTagList(userPo.getId()).isEmpty()) {
-            return searchAllUser(request, pageNum, pageSize);
-        }
-        Page<User> resultPage = null;
-        // TODO@lp 哪些用户使用缓存
-        Long userId = userPo.getId();
-        if (userId != null && userId < 100) {
-            // 取缓存
-            String redisKeyName = String.format(
-                    "%s:%s:userId=%d:pageNum=%d,pageSize=%d",
-                    RedisConstant.PROJECT_NAME,
-                    RedisConstant.MODULE_RECOMMEND,
-                    userId,
-                    pageNum,
-                    pageSize
-            );
-            RBucket<Page<User>> rBucket = redissonClient.getBucket(redisKeyName);
-            try {
-                resultPage = rBucket.get();
-                if (resultPage == null) {
-                    log.info("key={}, recommendUsers hit cache failed", redisKeyName);
-                    // 没取到，查库
-                    resultPage = recommendUsersFromDB(userPo, pageNum, pageSize);
-                    // 写缓存 TODO@lp 过期时间加offset,防止缓存雪崩。
-                    rBucket.set(resultPage, Duration.ofHours(8));
-                } else {
-                    log.info("key={}, recommendUsers hit cache succeed", redisKeyName);
-                }
-            } catch (RuntimeException e) {
-                log.error("key={}, recommendUsers write redis error", redisKeyName, e);
-            }
-        }
-        // 没走缓存
-        if (resultPage == null) {
-            resultPage = recommendUsersFromDB(userPo, pageNum, pageSize);
-        }
-        List<UserDTO> safetyUserList = resultPage.getRecords().stream().map(ModelHelper.INSTANCE::convertUserToUserDto).collect(Collectors.toList());
-        return ResponseUtils.success(safetyUserList);
-    }
-
-    @Override
-    public BaseResponse<List<TagDTO>> getUserTags(Long userId) {
-        List<Tag> tagList = userTagService.getTagList(userId);
-        List<TagDTO> tagDTOList = tagList.stream().filter(tag -> tag.isParent() == 0).map(TagDTO::new).collect(Collectors.toList());
-        return ResponseUtils.success(tagDTOList);
-    }
-
-    @Override
-    public BaseResponse<Integer> updateTags(HttpServletRequest request, TagBindRequest tagBindRequest) {
-        User loginUser = this.getById(UserHelper.getUserDtoFromRequest(request).getUserId());
-        if (loginUser == null) {
-            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "用户不存在");
-        }
-        List<Long> tagIdList = tagBindRequest.getTagIdList();
-        List<Long> validTagIdList = tagIdList.stream().filter(tagId -> tagMapper.selectById(tagId) != null).collect(Collectors.toList());
-        Integer addedTags = userTagService.updateTagsOnUser(loginUser.getId(), validTagIdList);
-        return ResponseUtils.success(addedTags);
-    }
-
-    private Page<User> recommendUsersFromDB(User sourceUser, int pageNum, int pageSize) {
-        List<Long> hasTagUserIdList = userTagService.getAllUserWithTag();
-        List<String> sourceTagList = userTagService.getTagNameList(sourceUser.getId());
-        PriorityQueue<Long> maximumPriorityQueue = new PriorityQueue<>(pageSize, (userId1, userId2) -> {
-            List<String> user1TagList = userTagService.getTagNameList(userId1);
-            List<String> user2TagList = userTagService.getTagNameList(userId2);
-            int user1Distance = EditDistance.levenshteinDistance(sourceTagList, user1TagList);
-            int user2Distance = EditDistance.levenshteinDistance(sourceTagList, user2TagList);
-            // PriorityQueue默认是最小堆，这里需要得到前pageSize个编辑距离最小的元素，所以用最大堆。
-            return user2Distance - user1Distance;
-        });
-        for (Long userId : hasTagUserIdList) {
-            if (Objects.equals(userId, sourceUser.getId())) {
-                continue;
-            }
-            maximumPriorityQueue.offer(userId);
-        }
-        LinkedList<User> strictlySortedUserList = new LinkedList<>();
-        while (!maximumPriorityQueue.isEmpty()) {
-            strictlySortedUserList.addFirst(this.getById(maximumPriorityQueue.poll()));
-        }
-        List<User> resultUserList = strictlySortedUserList.stream().map(user -> this.getById(user.getId())).collect(Collectors.toList());
-        return new Page<User>(pageNum, pageSize).setRecords(resultUserList);
-    }
-
     /**
      * @param partialUser 前端更新用户信息后，传递的新用户对象。只有不为空的部分是需要写入数据库的。
      * @author lipeng
@@ -390,6 +284,76 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
                 originalUser.setUserRole(partialUser.getUserRole());
             }
         }
+    }
+
+    @Override
+    public BaseResponse<List<UserDTO>> recommendUsers(HttpServletRequest request, int pageNum, int pageSize) {
+        UserDTO loginUser = UserHelper.getUserDtoFromRequest(request);
+        User userPo = this.getById(loginUser.getUserId());
+        if (userPo == null) {
+            throw new BusinessException(Error.CLIENT_NO_AUTH, "");
+        }
+        // 用户无标签时，推荐用户 降级为 展示所有用户。
+        if (userTagService.getTagList(userPo.getId()).isEmpty()) {
+            return searchAllUser(request, pageNum, pageSize);
+        }
+        List<UserDTO> userDTOList = cacheService.getWithCache(
+                cacheKeyBuilder.buildUserRecommendKey(userPo.getId(), pageNum, pageSize),
+                () -> recommendUsersFromDB(userPo, pageNum, pageSize),
+                CacheService.DEFAULT_CACHE_DURATION
+        );
+        return ResponseUtils.success(userDTOList);
+    }
+
+    public List<UserDTO> recommendUsersFromDB(User sourceUser, int pageNum, int pageSize) {
+        List<Long> hasTagUserIdList = userTagService.getAllUserWithTag();
+        List<String> sourceTagList = userTagService.getTagNameList(sourceUser.getId());
+
+        PriorityQueue<Long> maximumPriorityQueue = new PriorityQueue<>(pageNum * pageSize, (userId1, userId2) -> {
+            List<String> user1TagList = userTagService.getTagNameList(userId1);
+            List<String> user2TagList = userTagService.getTagNameList(userId2);
+            int user1Distance = EditDistance.levenshteinDistance(sourceTagList, user1TagList);
+            int user2Distance = EditDistance.levenshteinDistance(sourceTagList, user2TagList);
+            // PriorityQueue默认是最小堆，这里需要得到前pageSize个编辑距离最小的元素，所以用最大堆。
+            return user2Distance - user1Distance;
+        });
+        for (Long userId : hasTagUserIdList) {
+            Long sId = sourceUser.getId();
+            if (Objects.equals(userId, sId)) {
+                continue;
+            }
+            maximumPriorityQueue.offer(userId);
+        }
+        while (maximumPriorityQueue.size() > pageSize) {
+            maximumPriorityQueue.poll();
+        }
+        LinkedList<User> strictlySortedUserList = new LinkedList<>();
+        while (!maximumPriorityQueue.isEmpty()) {
+            strictlySortedUserList.addFirst(this.getById(maximumPriorityQueue.poll()));
+        }
+        return strictlySortedUserList.stream().map(ModelHelper.INSTANCE::convertUserToUserDto).collect(Collectors.toList());
+    }
+
+    @Override
+    public BaseResponse<List<TagDTO>> getUserTags(Long userId) {
+        List<Tag> tagList = userTagService.getTagList(userId);
+        List<TagDTO> tagDTOList = tagList.stream().filter(tag -> tag.isParent() == 0).map(TagDTO::new).collect(Collectors.toList());
+        return ResponseUtils.success(tagDTOList);
+    }
+
+    @Override
+    public BaseResponse<Integer> updateTags(HttpServletRequest request, TagBindRequest tagBindRequest) {
+        User loginUser = this.getById(UserHelper.getUserDtoFromRequest(request).getUserId());
+        if (loginUser == null) {
+            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "用户不存在");
+        }
+        List<Long> tagIdList = tagBindRequest.getTagIdList();
+        List<Long> validTagIdList = tagIdList.stream().filter(tagId -> tagMapper.selectById(tagId) != null).collect(Collectors.toList());
+        Integer addedTagNum = userTagService.updateTagsOnUser(loginUser.getId(), validTagIdList);
+        if (addedTagNum == null) {
+            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "");
+        }
+        return ResponseUtils.success(addedTagNum);
     }
 
 }
