@@ -18,10 +18,7 @@ import com.yupi.usercenter.model.dto.TagDTO;
 import com.yupi.usercenter.model.dto.UserDTO;
 import com.yupi.usercenter.model.helper.ModelHelper;
 import com.yupi.usercenter.model.request.TagBindRequest;
-import com.yupi.usercenter.service.CacheKeyBuilder;
-import com.yupi.usercenter.service.CacheService;
-import com.yupi.usercenter.service.UserService;
-import com.yupi.usercenter.service.UserTagService;
+import com.yupi.usercenter.service.*;
 import com.yupi.usercenter.utils.UserHelper;
 import com.yupi.usercenter.utils.aspect.RequiredLogin;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +29,7 @@ import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.DigestUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.*;
@@ -60,13 +58,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     private final UserTagService userTagService;
     private final MyConfigProperty myConfigProperty;
     private final TagMapper tagMapper;
+    private final ImageUploadService imageUploadService;
 
-    public UserServiceImpl(CacheService cacheService, CacheKeyBuilder cacheKeyBuilder, UserTagService userTagService, MyConfigProperty myConfigProperty, TagMapper tagMapper) {
+    public UserServiceImpl(CacheService cacheService, CacheKeyBuilder cacheKeyBuilder, UserTagService userTagService, MyConfigProperty myConfigProperty, TagMapper tagMapper, ImageUploadService imageUploadService) {
         this.cacheService = cacheService;
         this.cacheKeyBuilder = cacheKeyBuilder;
         this.userTagService = userTagService;
         this.myConfigProperty = myConfigProperty;
         this.tagMapper = tagMapper;
+        this.imageUploadService = imageUploadService;
     }
 
     public BaseResponse<Long> userRegister(@NonNull String userName, @NonNull String userPassword, @NonNull String repeatPassword) {
@@ -354,6 +354,28 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "");
         }
         return ResponseUtils.success(addedTagNum);
+    }
+
+    @Override
+    public BaseResponse<String> uploadAvatar(MultipartFile file, Long userId, HttpServletRequest request) {
+        UserDTO loginUser = UserHelper.getUserDtoFromRequest(request);
+        User user = this.getById(loginUser.getUserId());
+        if (user == null || !Objects.equals(user.getId(), userId)) {
+            throw new BusinessException(Error.CLIENT_FORBIDDEN, "");
+        }
+        String avatarUrl = imageUploadService.uploadAvatar(file, userId);
+        if (avatarUrl != null) {
+            log.info("userId:{} upload avatar success, avatarUrl = {}", userId, avatarUrl);
+            user.setAvatarUrl(avatarUrl);
+            boolean updated = this.updateById(user);
+            if (updated) {
+                log.info("userId:{} update avatarUrl:{} success.", userId, avatarUrl);
+            }
+            return ResponseUtils.success(avatarUrl);
+        } else {
+            log.error("userId:{} upload avatar failed.", userId);
+            return ResponseUtils.error(Error.SERVER_ERROR, "上传头像失败");
+        }
     }
 
 }

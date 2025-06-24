@@ -10,3 +10,11 @@ spring:
 
 knife4j:
   production: true
+
+tencent:
+  cos:
+    secret-id: ${COS_SECRET_ID}
+    secret-key: ${COS_SECRET_KEY}
+    region: ${COS_REGION}
+    bucket-name: ${COS_BUCKET_NAME}
+    base-url: ${COS_BASE_URL}

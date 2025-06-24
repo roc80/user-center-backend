@@ -12,6 +12,7 @@ import com.yupi.usercenter.model.request.UserRegisterRequest;
 import com.yupi.usercenter.service.UserService;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
@@ -104,5 +105,14 @@ public class UserController {
     @PostMapping("/my/tags")
     public BaseResponse<Integer> updateTags(HttpServletRequest request, @RequestBody TagBindRequest tagBindRequest) {
         return userService.updateTags(request, tagBindRequest);
+    }
+
+    @PostMapping("/avatar")
+    public BaseResponse<String> uploadAvatar(
+            @RequestParam("file")MultipartFile file,
+            @RequestParam(value = "userId", defaultValue = "0")Long userId,
+            HttpServletRequest request
+    ) {
+        return userService.uploadAvatar(file, userId, request);
     }
 }

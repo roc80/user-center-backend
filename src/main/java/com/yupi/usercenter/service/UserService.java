@@ -8,6 +8,7 @@ import com.yupi.usercenter.model.dto.UserDTO;
 import com.yupi.usercenter.model.request.TagBindRequest;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -53,4 +54,6 @@ public interface UserService extends IService<User> {
       * @return tagBindRequest 中 tagIdList 有多少个已经和当前用户绑定
       */
     BaseResponse<Integer> updateTags(HttpServletRequest request, TagBindRequest tagBindRequest);
+
+    BaseResponse<String> uploadAvatar(MultipartFile file, Long userId, HttpServletRequest request);
 }

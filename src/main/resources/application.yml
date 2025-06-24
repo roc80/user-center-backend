@@ -59,3 +59,15 @@ knife4j:
   enable: true
   # 标识是否生产环境
   production: false
+
+tencent:
+  cos:
+    secret-id: cos_secret_id
+    secret-key: cos_secret_key
+    region: ap-*
+    bucket-name: bucket-name
+    base-url: https://*.myqcloud.com
+upload:
+  avatar:
+    max-size: 2097152  # 2MB
+    allowed-types: image/jpeg,image/png,image/gif,image/webp
