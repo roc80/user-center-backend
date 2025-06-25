@@ -9,6 +9,7 @@ import com.yupi.usercenter.model.request.TagBindRequest;
 import com.yupi.usercenter.model.request.UserDeleteRequest;
 import com.yupi.usercenter.model.request.UserLoginRequest;
 import com.yupi.usercenter.model.request.UserRegisterRequest;
+import com.yupi.usercenter.model.response.PageResponse;
 import com.yupi.usercenter.service.UserService;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.web.bind.annotation.*;
@@ -54,7 +55,7 @@ public class UserController {
     }
 
     @GetMapping("/search/all")
-    public BaseResponse<List<UserDTO>> searchAllUser(HttpServletRequest request, Integer pageNum, Integer pageSize) {
+    public BaseResponse<PageResponse<UserDTO>> searchAllUser(HttpServletRequest request, Integer pageNum, Integer pageSize) {
         if (pageNum == null || pageNum <= 0 || pageSize == null || pageSize <= 0) {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "分页参数错误");
         }
@@ -87,7 +88,7 @@ public class UserController {
     }
 
     @GetMapping("/recommend")
-    public BaseResponse<List<UserDTO>> recommendUsers(HttpServletRequest request, Integer pageNum, Integer pageSize) {
+    public BaseResponse<PageResponse<UserDTO>> recommendUsers(HttpServletRequest request, Integer pageNum, Integer pageSize) {
         if (pageNum == null || pageNum <= 0 || pageSize == null || pageSize <= 0) {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "分页参数错误");
         }

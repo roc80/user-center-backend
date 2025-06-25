@@ -6,6 +6,7 @@ import com.yupi.usercenter.model.base.BaseResponse;
 import com.yupi.usercenter.model.dto.TagDTO;
 import com.yupi.usercenter.model.dto.UserDTO;
 import com.yupi.usercenter.model.request.TagBindRequest;
+import com.yupi.usercenter.model.response.PageResponse;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import org.springframework.web.multipart.MultipartFile;
@@ -41,11 +42,11 @@ public interface UserService extends IService<User> {
 
     BaseResponse<List<UserDTO>> searchUserByUserName(@NonNull String userName, HttpServletRequest request);
 
-    BaseResponse<List<UserDTO>> searchAllUser(HttpServletRequest request, int pageNum, int pageSize);
+    BaseResponse<PageResponse<UserDTO>> searchAllUser(HttpServletRequest request, int pageNum, int pageSize);
 
     BaseResponse<List<UserDTO>> searchUsersByTags(List<Long> tagIdList);
 
-    BaseResponse<List<UserDTO>> recommendUsers(HttpServletRequest request, int pageNum, int pageSize);
+    BaseResponse<PageResponse<UserDTO>> recommendUsers(HttpServletRequest request, int pageNum, int pageSize);
 
     BaseResponse<List<TagDTO>> getUserTags(Long userId);
 

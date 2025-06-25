@@ -18,6 +18,7 @@ import com.yupi.usercenter.model.dto.TagDTO;
 import com.yupi.usercenter.model.dto.UserDTO;
 import com.yupi.usercenter.model.helper.ModelHelper;
 import com.yupi.usercenter.model.request.TagBindRequest;
+import com.yupi.usercenter.model.response.PageResponse;
 import com.yupi.usercenter.service.*;
 import com.yupi.usercenter.utils.UserHelper;
 import com.yupi.usercenter.utils.aspect.RequiredLogin;
@@ -32,7 +33,10 @@ import org.springframework.util.DigestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
-import java.util.*;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Objects;
+import java.util.PriorityQueue;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -195,24 +199,26 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     @RequiredLogin
     @Override
-    public BaseResponse<List<UserDTO>> searchAllUser(HttpServletRequest request, int pageNum, int pageSize) {
-        List<UserDTO> userDTOList = cacheService.getWithCache(
+    public BaseResponse<PageResponse<UserDTO>> searchAllUser(HttpServletRequest request, int pageNum, int pageSize) {
+        PageResponse<UserDTO> pageResponse = cacheService.getWithCache(
                 cacheKeyBuilder.buildUserSearchKey(pageNum, pageSize),
                 () -> getUsersFromDB(pageNum, pageSize),
                 CacheService.DEFAULT_CACHE_DURATION
         );
-        return ResponseUtils.success(userDTOList);
+        return ResponseUtils.success(pageResponse);
     }
 
-    public List<UserDTO> getUsersFromDB(int pageNum, int pageSize) {
+    public PageResponse<UserDTO> getUsersFromDB(int pageNum, int pageSize) {
         try {
             Page<User> resultPage = this.page(new Page<>(pageNum, pageSize));
-            return resultPage.getRecords().stream()
+            List<UserDTO> userDTOList = resultPage.getRecords().stream()
                     .map(ModelHelper.INSTANCE::convertUserToUserDto)
                     .collect(Collectors.toList());
+            boolean hasMore = this.count() > ((long) pageNum * pageSize);
+            return new PageResponse<>(userDTOList, pageNum, pageSize, hasMore);
         } catch (Exception e) {
             log.error("Failed to query users from database, pageNum: {}, pageSize: {}", pageNum, pageSize, e);
-            return Collections.emptyList();
+            throw new BusinessException(Error.SERVER_ERROR, "分页查询用户失败， pageNum = " + pageNum + ", pageSize = " + pageSize);
         }
     }
 
@@ -287,7 +293,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
     @Override
-    public BaseResponse<List<UserDTO>> recommendUsers(HttpServletRequest request, int pageNum, int pageSize) {
+    public BaseResponse<PageResponse<UserDTO>> recommendUsers(HttpServletRequest request, int pageNum, int pageSize) {
         UserDTO loginUser = UserHelper.getUserDtoFromRequest(request);
         User userPo = this.getById(loginUser.getUserId());
         if (userPo == null) {
@@ -297,15 +303,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         if (userTagService.getTagList(userPo.getId()).isEmpty()) {
             return searchAllUser(request, pageNum, pageSize);
         }
-        List<UserDTO> userDTOList = cacheService.getWithCache(
+        PageResponse<UserDTO> pageResponse = cacheService.getWithCache(
                 cacheKeyBuilder.buildUserRecommendKey(userPo.getId(), pageNum, pageSize),
                 () -> recommendUsersFromDB(userPo, pageNum, pageSize),
                 CacheService.DEFAULT_CACHE_DURATION
         );
-        return ResponseUtils.success(userDTOList);
+        return ResponseUtils.success(pageResponse);
     }
 
-    public List<UserDTO> recommendUsersFromDB(User sourceUser, int pageNum, int pageSize) {
+    public PageResponse<UserDTO> recommendUsersFromDB(User sourceUser, int pageNum, int pageSize) {
         List<Long> hasTagUserIdList = userTagService.getAllUserWithTag();
         List<String> sourceTagList = userTagService.getTagNameList(sourceUser.getId());
 
@@ -317,11 +323,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             // PriorityQueue默认是最小堆，这里需要得到前pageSize个编辑距离最小的元素，所以用最大堆。
             return user2Distance - user1Distance;
         });
+        int totalRecommendUserNum = 0;
         for (Long userId : hasTagUserIdList) {
             Long sId = sourceUser.getId();
             if (Objects.equals(userId, sId)) {
                 continue;
             }
+            totalRecommendUserNum ++;
             maximumPriorityQueue.offer(userId);
         }
         while (maximumPriorityQueue.size() > pageSize) {
@@ -331,7 +339,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         while (!maximumPriorityQueue.isEmpty()) {
             strictlySortedUserList.addFirst(this.getById(maximumPriorityQueue.poll()));
         }
-        return strictlySortedUserList.stream().map(ModelHelper.INSTANCE::convertUserToUserDto).collect(Collectors.toList());
+        List<UserDTO> userDTOList = strictlySortedUserList.stream().map(ModelHelper.INSTANCE::convertUserToUserDto).collect(Collectors.toList());
+        boolean hasMore = totalRecommendUserNum > (pageNum * pageSize);
+        return new PageResponse<>(userDTOList, pageNum, pageSize, hasMore);
     }
 
     @Override
