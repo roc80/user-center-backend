@@ -1,6 +1,3 @@
-my-config:
-  security:
-    salt: suARnTClqnWOx8
 logging:
   level:
     org.springframework: info
@@ -41,9 +38,6 @@ server:
   port: 8080
   servlet:
     context-path: /api
-    session:
-      cookie:
-        domain: localhost
 
 mybatis-plus:
   configuration:
@@ -71,3 +65,11 @@ upload:
   avatar:
     max-size: 2097152  # 2MB
     allowed-types: image/jpeg,image/png,image/gif,image/webp
+
+app:
+  cookie:
+    domain: localhost
+
+my-config:
+  security:
+    salt: suARnTClqnWOx8

@@ -7,6 +7,10 @@ spring:
     url: ${DB_URL}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
+  redis:
+    port: ${REDIS_PORT}
+    host: ${REDIS_HOST}
+    database: ${REDIS_DATABASE}
 
 knife4j:
   production: true
@@ -18,3 +22,11 @@ tencent:
     region: ${COS_REGION}
     bucket-name: ${COS_BUCKET_NAME}
     base-url: ${COS_BASE_URL}
+
+app:
+  cookie:
+    domain: .rocli.cn
+
+my-config:
+  security:
+    salt: ${SECURITY_SALT}
