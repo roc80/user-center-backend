@@ -9,6 +9,7 @@ import com.yupi.usercenter.model.request.TagBindRequest;
 import com.yupi.usercenter.model.request.UserDeleteRequest;
 import com.yupi.usercenter.model.request.UserLoginRequest;
 import com.yupi.usercenter.model.request.UserRegisterRequest;
+import com.yupi.usercenter.model.response.LoginResponse;
 import com.yupi.usercenter.model.response.PageResponse;
 import com.yupi.usercenter.service.UserService;
 import org.apache.commons.lang3.StringUtils;
@@ -31,8 +32,8 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public BaseResponse<UserDTO> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request) {
-        return userService.userLogin(userLoginRequest.getUsername(), userLoginRequest.getPassword(), request);
+    public BaseResponse<LoginResponse> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest httpServletRequest) {
+        return userService.userLogin(userLoginRequest, httpServletRequest);
     }
 
     @PostMapping("/logout")

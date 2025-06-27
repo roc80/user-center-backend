@@ -6,6 +6,8 @@ import com.yupi.usercenter.model.base.BaseResponse;
 import com.yupi.usercenter.model.dto.TagDTO;
 import com.yupi.usercenter.model.dto.UserDTO;
 import com.yupi.usercenter.model.request.TagBindRequest;
+import com.yupi.usercenter.model.request.UserLoginRequest;
+import com.yupi.usercenter.model.response.LoginResponse;
 import com.yupi.usercenter.model.response.PageResponse;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
@@ -23,7 +25,7 @@ public interface UserService extends IService<User> {
 
     BaseResponse<Long> userRegister(@NonNull String userName, @NonNull String userPassword, @NonNull String repeatPassword);
 
-    BaseResponse<UserDTO> userLogin(@NonNull String userName, @NonNull String userPassword, HttpServletRequest request);
+    BaseResponse<LoginResponse> userLogin(UserLoginRequest userLoginRequest, HttpServletRequest httpServletRequest);
 
     BaseResponse<Boolean> userLogout(HttpServletRequest request);
 

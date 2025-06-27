@@ -18,6 +18,8 @@ import com.yupi.usercenter.model.dto.TagDTO;
 import com.yupi.usercenter.model.dto.UserDTO;
 import com.yupi.usercenter.model.helper.ModelHelper;
 import com.yupi.usercenter.model.request.TagBindRequest;
+import com.yupi.usercenter.model.request.UserLoginRequest;
+import com.yupi.usercenter.model.response.LoginResponse;
 import com.yupi.usercenter.model.response.PageResponse;
 import com.yupi.usercenter.service.*;
 import com.yupi.usercenter.utils.UserHelper;
@@ -117,7 +119,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         return null;
     }
 
-    public BaseResponse<UserDTO> userLogin(@NonNull String userName, @NonNull String userPassword, HttpServletRequest request) {
+    public BaseResponse<LoginResponse> userLogin(UserLoginRequest userLoginRequest, HttpServletRequest httpServletRequest) {
+        String userName = userLoginRequest.getUsername();
+        String userPassword = userLoginRequest.getPassword();
         if (StringUtils.isAnyBlank(userName, userPassword)) {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "用户名或密码不能为空");
         }
@@ -136,8 +140,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         String needCheckPasswordMD5 = DigestUtils.md5DigestAsHex((userPassword + myConfigProperty.getSecurity().getSalt()).getBytes());
         if (needCheckPasswordMD5.equals(savedUserPasswordMD5)) {
             UserDTO userDTO = ModelHelper.INSTANCE.convertUserToUserDto(savedUser);
-            request.getSession().setAttribute(UserConstant.USER_LOGIN_INFO, userDTO);
-            return ResponseUtils.success(userDTO);
+            httpServletRequest.getSession().setAttribute(UserConstant.USER_LOGIN_INFO, userDTO);
+            LoginResponse loginResponse = new LoginResponse(userDTO, userLoginRequest.getRedirectUrl());
+            return ResponseUtils.success(loginResponse);
         } else {
             throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "密码校验失败");
         }
@@ -214,8 +219,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             List<UserDTO> userDTOList = resultPage.getRecords().stream()
                     .map(ModelHelper.INSTANCE::convertUserToUserDto)
                     .collect(Collectors.toList());
-            boolean hasMore = this.count() > ((long) pageNum * pageSize);
-            return new PageResponse<>(userDTOList, pageNum, pageSize, hasMore);
+            long counted = this.count();
+            return new PageResponse<>(userDTOList, pageNum, pageSize, counted);
         } catch (Exception e) {
             log.error("Failed to query users from database, pageNum: {}, pageSize: {}", pageNum, pageSize, e);
             throw new BusinessException(Error.SERVER_ERROR, "分页查询用户失败， pageNum = " + pageNum + ", pageSize = " + pageSize);
@@ -323,7 +328,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             // PriorityQueue默认是最小堆，这里需要得到前pageSize个编辑距离最小的元素，所以用最大堆。
             return user2Distance - user1Distance;
         });
-        int totalRecommendUserNum = 0;
+        long totalRecommendUserNum = 0L;
         for (Long userId : hasTagUserIdList) {
             Long sId = sourceUser.getId();
             if (Objects.equals(userId, sId)) {
@@ -340,8 +345,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             strictlySortedUserList.addFirst(this.getById(maximumPriorityQueue.poll()));
         }
         List<UserDTO> userDTOList = strictlySortedUserList.stream().map(ModelHelper.INSTANCE::convertUserToUserDto).collect(Collectors.toList());
-        boolean hasMore = totalRecommendUserNum > (pageNum * pageSize);
-        return new PageResponse<>(userDTOList, pageNum, pageSize, hasMore);
+        return new PageResponse<>(userDTOList, pageNum, pageSize, totalRecommendUserNum);
     }
 
     @Override
