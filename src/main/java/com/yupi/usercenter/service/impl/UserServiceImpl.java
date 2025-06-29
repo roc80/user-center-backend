@@ -27,6 +27,7 @@ import com.yupi.usercenter.utils.aspect.RequiredLogin;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
+import org.redisson.api.RedissonClient;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
@@ -35,6 +36,7 @@ import org.springframework.util.DigestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
+import java.time.Duration;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -65,14 +67,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     private final MyConfigProperty myConfigProperty;
     private final TagMapper tagMapper;
     private final ImageUploadService imageUploadService;
+    private final UserMapper userMapper;
 
-    public UserServiceImpl(CacheService cacheService, CacheKeyBuilder cacheKeyBuilder, UserTagService userTagService, MyConfigProperty myConfigProperty, TagMapper tagMapper, ImageUploadService imageUploadService) {
+    public UserServiceImpl(CacheService cacheService, CacheKeyBuilder cacheKeyBuilder, UserTagService userTagService, MyConfigProperty myConfigProperty, TagMapper tagMapper, ImageUploadService imageUploadService, RedissonClient redissonClient, UserMapper userMapper) {
         this.cacheService = cacheService;
         this.cacheKeyBuilder = cacheKeyBuilder;
         this.userTagService = userTagService;
         this.myConfigProperty = myConfigProperty;
         this.tagMapper = tagMapper;
         this.imageUploadService = imageUploadService;
+        this.userMapper = userMapper;
     }
 
     public BaseResponse<Long> userRegister(@NonNull String userName, @NonNull String userPassword, @NonNull String repeatPassword) {
@@ -96,8 +100,25 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         // 插入一个新用户，返回用户id
         String userPasswordMd5 = DigestUtils.md5DigestAsHex((userPassword + myConfigProperty.getSecurity().getSalt()).getBytes());
         User newUser = new User(userName, userPasswordMd5);
-        this.save(newUser);
-        return ResponseUtils.success(newUser.getId());
+        boolean saved = this.save(newUser);
+        if (saved) {
+            long totalUserNum = this.count();
+            int changedPageNum = (int) (totalUserNum / UserConstant.USER_PAGE_SIZE + 1);
+            updateSearchAllUserCache(changedPageNum);
+            return ResponseUtils.success(newUser.getId());
+        } else {
+            throw new BusinessException(Error.SERVER_ERROR, "注册用户失败");
+        }
+    }
+
+    private void updateSearchAllUserCache(int changedPageNum) {
+        String userSearchKey = cacheKeyBuilder.buildUserSearchKey(changedPageNum, UserConstant.USER_PAGE_SIZE);
+        boolean deleted = cacheService.deleteCache(userSearchKey);
+        if (deleted) {
+            log.info("delete cache {} success", userSearchKey);
+        } else {
+            log.error("delete cache {} failed", userSearchKey);
+        }
     }
 
     private String commonCheck(String userName, String userPassword) {
@@ -205,12 +226,19 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     @RequiredLogin
     @Override
     public BaseResponse<PageResponse<UserDTO>> searchAllUser(HttpServletRequest request, int pageNum, int pageSize) {
+        validatePageSize(pageSize);
         PageResponse<UserDTO> pageResponse = cacheService.getWithCache(
                 cacheKeyBuilder.buildUserSearchKey(pageNum, pageSize),
                 () -> getUsersFromDB(pageNum, pageSize),
-                CacheService.DEFAULT_CACHE_DURATION
+                Duration.ofHours(1)
         );
         return ResponseUtils.success(pageResponse);
+    }
+
+    private void validatePageSize(int pageSize) {
+        if (pageSize != UserConstant.USER_PAGE_SIZE) {
+            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, String.format("允许的分页大小：%d", UserConstant.USER_PAGE_SIZE));
+        }
     }
 
     public PageResponse<UserDTO> getUsersFromDB(int pageNum, int pageSize) {
@@ -256,10 +284,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             throw new BusinessException(Error.CLIENT_NO_AUTH, "无权限修改");
         }
         User partialUser = ModelHelper.INSTANCE.convertUserDtoToUser(userDTO);
-        User oldUser = this.getById(partialUser.getId());
-        doUpdate(oldUser, partialUser, isAdmin);
-        boolean updated = this.updateById(oldUser);
+        User userPo = this.getById(partialUser.getId());
+        if (userPo == null || userPo.getId() == null) {
+            throw new BusinessException(Error.CLIENT_PARAMS_ERROR, "用户不存在");
+        }
+        updateUserProps(userPo, partialUser, isAdmin);
+        boolean updated = this.updateById(userPo);
         if (updated) {
+            long currentUserSerialNumber = userMapper.getSerialNumFromValidUsers(userPo.getId());
+            int changedPageNum = (int) (currentUserSerialNumber / UserConstant.USER_PAGE_SIZE + 1);
+            updateSearchAllUserCache(changedPageNum);
             return ResponseUtils.success(0);
         } else {
             return ResponseUtils.success(-1);
@@ -271,7 +305,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
      * @author lipeng
      * @since 2025/5/15 11:03
      */
-    private void doUpdate(User originalUser, User partialUser, boolean isAdmin) {
+    private void updateUserProps(User originalUser, User partialUser, boolean isAdmin) {
         if (originalUser == null || partialUser == null) {
             return;
         }
@@ -304,6 +338,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         if (userPo == null) {
             throw new BusinessException(Error.CLIENT_NO_AUTH, "");
         }
+        validatePageSize(pageSize);
         // 用户无标签时，推荐用户 降级为 展示所有用户。
         if (userTagService.getTagList(userPo.getId()).isEmpty()) {
             return searchAllUser(request, pageNum, pageSize);
@@ -311,7 +346,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         PageResponse<UserDTO> pageResponse = cacheService.getWithCache(
                 cacheKeyBuilder.buildUserRecommendKey(userPo.getId(), pageNum, pageSize),
                 () -> recommendUsersFromDB(userPo, pageNum, pageSize),
-                CacheService.DEFAULT_CACHE_DURATION
+                Duration.ofMinutes(1)
         );
         return ResponseUtils.success(pageResponse);
     }

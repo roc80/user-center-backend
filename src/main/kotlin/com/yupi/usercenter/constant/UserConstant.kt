@@ -20,4 +20,6 @@ object UserConstant {
     const val USER_PO_GENDER_WOMAN = 1
     const val USER_PO_STATE_NORMAL = 0
     const val USER_PO_STATE_INVALID = 1
+
+    const val USER_PAGE_SIZE = 20
 }

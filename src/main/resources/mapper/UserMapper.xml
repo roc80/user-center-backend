@@ -26,5 +26,11 @@
         email,create_datetime,update_datetime,
         is_valid,is_delete,user_role
     </sql>
+    <select id="getSerialNumFromValidUsers" resultType="java.lang.Long">
+        select count()
+        from user
+        where is_valid = 0
+          and id >= #{id}
+    </select>
 
 </mapper>

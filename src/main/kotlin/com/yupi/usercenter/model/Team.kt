@@ -1,6 +1,7 @@
 package com.yupi.usercenter.model
 
 import com.baomidou.mybatisplus.annotation.*
+import com.fasterxml.jackson.annotation.JsonFormat
 import com.yupi.usercenter.model.request.TeamCreateRequest
 import java.io.Serializable
 import java.time.LocalDateTime
@@ -71,12 +72,14 @@ data class Team(
          * 创建时间
          */
         @TableField(value = "create_datetime")
+        @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
         var createDatetime: LocalDateTime?,
 
         /**
          * 更新时间
          */
         @TableField(value = "update_datetime")
+        @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
         var updateDatetime: LocalDateTime?,
 
         /**

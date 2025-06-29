@@ -11,7 +11,7 @@ import java.util.function.Supplier;
  */
 public interface CacheService {
 
-    Duration DEFAULT_CACHE_DURATION = Duration.ofHours(8);
+    Duration DURATION_23H_59M_57S = Duration.ofHours(23).plusMinutes(59).plusSeconds(57);
 
     /**
      * 通用缓存获取方法
@@ -23,4 +23,6 @@ public interface CacheService {
     <T> T getWithCache(String cacheKey, Supplier<T> supplier, Duration expireDuration);
 
     <T> void asyncUpdateCache(String cacheKey, T data, Duration expireDuration);
+
+    boolean deleteCache(String cacheKey);
 }

@@ -74,6 +74,12 @@ public class CacheServiceImpl implements CacheService {
         }
     }
 
+    @Override
+    public boolean deleteCache(String cacheKey) {
+        RBucket<Object> rBucket = redissonClient.getBucket(cacheKey);
+        return rBucket.delete();
+    }
+
     /**
      * 添加随机偏移量防止缓存雪崩
      */

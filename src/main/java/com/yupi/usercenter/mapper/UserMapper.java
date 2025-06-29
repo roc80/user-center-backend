@@ -3,6 +3,7 @@ package com.yupi.usercenter.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.yupi.usercenter.model.User;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * 针对表【user(用户表)】的数据库操作Mapper
@@ -12,6 +13,8 @@ import org.apache.ibatis.annotations.Mapper;
  */
 @Mapper
 public interface UserMapper extends BaseMapper<User> {
+
+    long getSerialNumFromValidUsers(@Param("id") long id);
 
 }
 
