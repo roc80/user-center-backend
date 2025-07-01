@@ -58,5 +58,9 @@ public interface UserService extends IService<User> {
       */
     BaseResponse<Integer> updateTags(HttpServletRequest request, TagBindRequest tagBindRequest);
 
-    BaseResponse<String> uploadAvatar(MultipartFile file, Long userId, HttpServletRequest request);
+    /**
+     *
+     * @return 有几个用户的信息被更新
+     */
+    BaseResponse<Integer> uploadAvatar(MultipartFile file, Long userId, HttpServletRequest request);
 }

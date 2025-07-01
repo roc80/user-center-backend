@@ -294,9 +294,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             long currentUserSerialNumber = userMapper.getSerialNumFromValidUsers(userPo.getId());
             int changedPageNum = (int) (currentUserSerialNumber / UserConstant.USER_PAGE_SIZE + 1);
             updateSearchAllUserCache(changedPageNum);
-            return ResponseUtils.success(0);
+            return ResponseUtils.success(1);
         } else {
-            return ResponseUtils.success(-1);
+            return ResponseUtils.success(0);
         }
     }
 
@@ -409,7 +409,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
     @Override
-    public BaseResponse<String> uploadAvatar(MultipartFile file, Long userId, HttpServletRequest request) {
+    public BaseResponse<Integer> uploadAvatar(MultipartFile file, Long userId, HttpServletRequest request) {
         UserDTO loginUser = UserHelper.getUserDtoFromRequest(request);
         User user = this.getById(loginUser.getUserId());
         if (user == null || !Objects.equals(user.getId(), userId)) {
@@ -418,12 +418,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         String avatarUrl = imageUploadService.uploadAvatar(file, userId);
         if (avatarUrl != null) {
             log.info("userId:{} upload avatar success, avatarUrl = {}", userId, avatarUrl);
-            user.setAvatarUrl(avatarUrl);
-            boolean updated = this.updateById(user);
-            if (updated) {
-                log.info("userId:{} update avatarUrl:{} success.", userId, avatarUrl);
-            }
-            return ResponseUtils.success(avatarUrl);
+            loginUser.setAvatarUrl(avatarUrl);
+            return updateUser(request, loginUser);
         } else {
             log.error("userId:{} upload avatar failed.", userId);
             return ResponseUtils.error(Error.SERVER_ERROR, "上传头像失败");

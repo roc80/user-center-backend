@@ -110,7 +110,7 @@ public class UserController {
     }
 
     @PostMapping("/avatar")
-    public BaseResponse<String> uploadAvatar(
+    public BaseResponse<Integer> uploadAvatar(
             @RequestParam("file")MultipartFile file,
             @RequestParam(value = "userId", defaultValue = "0")Long userId,
             HttpServletRequest request
