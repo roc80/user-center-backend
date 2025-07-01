@@ -309,6 +309,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         if (originalUser == null || partialUser == null) {
             return;
         }
+        if (partialUser.getAvatarUrl() != null) {
+            originalUser.setAvatarUrl(partialUser.getAvatarUrl());
+        }
         if (partialUser.getUserName() != null) {
             originalUser.setUserName(partialUser.getUserName());
         }
